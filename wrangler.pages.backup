@@ -1,0 +1,24 @@
+name = "polpo-direction-api"
+main = "src/worker/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages configuration
+pages_build_output_dir = "dist"
+
+[env.production]
+name = "polpo-direction-api"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "polpo-direction"
+database_id = "d66f3708-cf87-4505-b4c2-b0d028604d9e"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+
+# For Pages deployment
+[env.production.vars]
+ENVIRONMENT = "production"
