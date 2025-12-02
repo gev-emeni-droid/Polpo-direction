@@ -1,7 +1,0 @@
-# Pages configuration
-pages_build_output_dir = "dist"
-compatibility_date = "2024-01-01"
-
-# Environment variables
-[vars]
-ENVIRONMENT = "production"

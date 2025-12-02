@@ -17,6 +17,7 @@ export const STANDARD_ROLES = [
 ] as const;
 
 export const ABSENCE_TYPES = [
+  "Ecole",
   "AA",
   "RN",
   "JF",
@@ -49,12 +50,14 @@ export interface Employee {
   role: string;
   weeklyDefault?: Record<string, string>; 
   isActive: boolean;
-  isExternal?: boolean;
-  externalCategory?: string;
-  contractHoursWeek?: number;
-  contractType?: string;
-  email?: string;
-  phone?: string;
+}
+
+export interface LongAbsence {
+  id: string;
+  employeeId: string;
+  type: string; // From ABSENCE_TYPES
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
 }
 
 export interface ShiftSegment {
@@ -100,5 +103,5 @@ export interface Planning {
   status: 'active' | 'archived';
   rows: PlanningRow[];
   extraShifts: ExtraShift[]; // For storing extras separately
-  createdAt: string | number;
+  createdAt: number;
 }

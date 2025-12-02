@@ -23,16 +23,31 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-        setRoles(getRoles());
+        loadRoles();
         setName(initialName);
         setRoleId(initialRoleId);
     }
   }, [isOpen, initialName, initialRoleId]);
 
-  const handleSave = () => {
+  const loadRoles = async () => {
+    try {
+      const rolesData = await getRoles();
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+    } catch (err) {
+      console.error('Failed to load roles:', err);
+      setRoles([]);
+    }
+  };
+
+  const handleSave = async () => {
     if (name.trim()) {
-        updateEmployeeDetails(employeeId, name.trim(), roleId);
-        onClose();
+        try {
+          await updateEmployeeDetails(employeeId, name.trim(), roleId);
+          onClose();
+        } catch (err) {
+          console.error('Failed to update employee:', err);
+          alert('Erreur lors de la mise à jour de l\'employé');
+        }
     }
   };
 

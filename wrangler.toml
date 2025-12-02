@@ -1,0 +1,8 @@
+name = "polpo-direction"
+compatibility_date = "2024-06-20"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "polpo-direction"
+database_name = "polpo-direction"
+database_id = "d66f3708-cf87-4505-b4c2-b0d028604d9e"

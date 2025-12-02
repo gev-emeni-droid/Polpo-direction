@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw } from 'lucide-react';
-import { Employee, Template, STANDARD_ROLES, ShiftServiceType, TimeSlot } from '../types';
-import { getEmployees, getTemplates, saveEmployees, saveTemplates, getRoles, addRole, updateRole, deleteRole, updateTemplate, deleteTemplate } from '../services/storage';
+import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw, CalendarDays } from 'lucide-react';
+import { Employee, Template, STANDARD_ROLES, ShiftServiceType, TimeSlot, ABSENCE_TYPES, LongAbsence } from '../types';
+import { getEmployees, getTemplates, saveEmployees, saveTemplates, getRoles, addRole, updateRole, deleteRole, updateTemplate, deleteTemplate, updateEmployeeWeeklyDefault, getLongAbsences, addLongAbsence, deleteLongAbsence } from '../services/storage';
+import { format, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,10 +24,11 @@ const PASTEL_COLORS = [
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'employees' | 'templates' | 'defaults' | 'roles'>('employees');
+  const [activeTab, setActiveTab] = useState<'employees' | 'templates' | 'defaults' | 'roles' | 'absences'>('employees');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [roles, setRoles] = useState<{id:string, label:string}[]>([]);
+  const [longAbsences, setLongAbsences] = useState<LongAbsence[]>([]);
   
   // -- Employee Tab --
   const [newEmpName, setNewEmpName] = useState('');
@@ -46,6 +49,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [newTplSlots, setNewTplSlots] = useState<TimeSlot[]>([{start: '10:00', end: '15:00'}]);
   const [newTplColor, setNewTplColor] = useState(PASTEL_COLORS[6]); // Default Blue
 
+  // -- Absences Tab --
+  const [absEmpId, setAbsEmpId] = useState('');
+  const [absType, setAbsType] = useState<string>(ABSENCE_TYPES[0]);
+  const [absStart, setAbsStart] = useState('');
+  const [absEnd, setAbsEnd] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       loadData();
@@ -53,22 +62,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const loadData = async () => {
-      try {
-        const [employeesList, templatesList, rolesList] = await Promise.all([
-          getEmployees(),
-          getTemplates(),
-          getRoles()
-        ]);
-        setEmployees(employeesList);
-        setTemplates(templatesList);
-        setRoles(rolesList);
-        if (rolesList.length > 0 && !newEmpRole) setNewEmpRole(rolesList[0].id);
-      } catch (error) {
-        console.error('Failed to load data:', error);
-        setEmployees([]);
-        setTemplates([]);
-        setRoles([]);
+    try {
+      const empsData = await getEmployees();
+      const tplsData = await getTemplates();
+      const absData = await getLongAbsences();
+      const rolesData = await getRoles();
+
+      setEmployees(Array.isArray(empsData) ? empsData : []);
+      setTemplates(Array.isArray(tplsData) ? tplsData : []);
+      setLongAbsences(Array.isArray(absData) ? absData : []);
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+      
+      if (Array.isArray(rolesData) && rolesData.length > 0 && !newEmpRole) {
+        setNewEmpRole(rolesData[0].id);
       }
+      
+      const finalEmpsData = Array.isArray(empsData) ? empsData : [];
+      if (finalEmpsData.length > 0) {
+        setAbsEmpId(finalEmpsData[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setEmployees([]);
+      setTemplates([]);
+      setLongAbsences([]);
+      setRoles([]);
+    }
   };
 
   // --- ROLES ---
@@ -78,8 +97,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         await addRole(newRoleName.trim());
         setNewRoleName('');
         await loadData();
-      } catch (error) {
-        console.error('Failed to add role:', error);
+      } catch (err) {
+        console.error('Failed to add role:', err);
       }
   };
   const handleEditRoleStart = (id: string, label: string) => {
@@ -89,15 +108,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const handleEditRoleSave = async () => {
       if(editingRoleId && editRoleLabel.trim()) {
           try {
-            await updateRole({id: editingRoleId, label: editRoleLabel.trim()});
+            await updateRole(editingRoleId, editRoleLabel.trim());
             setEditingRoleId(null);
             await loadData();
-          } catch (error) {
-            console.error('Failed to update role:', error);
+          } catch (err) {
+            console.error('Failed to update role:', err);
           }
       }
   };
-  const handleDeleteRoleClick = (id: string) => {
+  const handleDeleteRoleClick = async (id: string) => {
       // Check usage
       const usageCount = employees.filter(e => e.role === id).length + templates.filter(t => t.role === id).length;
       if (usageCount > 0) {
@@ -107,39 +126,58 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           if(other) setReassignRoleId(other.id);
       } else {
           if(confirm('Supprimer ce poste ?')) {
-              deleteRole(id).then(() => loadData()).catch(err => console.error('Failed to delete role:', err));
+              try {
+                await deleteRole(id);
+                await loadData();
+              } catch (err) {
+                console.error('Failed to delete role:', err);
+              }
           }
       }
   };
-  const confirmDeleteRole = () => {
+  const confirmDeleteRole = async () => {
       if (deleteRoleConfirm && reassignRoleId) {
-          deleteRole(deleteRoleConfirm.id, reassignRoleId);
-          setDeleteRoleConfirm(null);
-          loadData();
+          try {
+            await deleteRole(deleteRoleConfirm.id, reassignRoleId);
+            setDeleteRoleConfirm(null);
+            await loadData();
+          } catch (err) {
+            console.error('Failed to delete role:', err);
+          }
       }
   };
 
   // --- EMPLOYEES ---
-  const handleAddEmployee = () => {
+  const handleAddEmployee = async () => {
     if (!newEmpName) return;
-    const newEmp: Employee = {
-      id: crypto.randomUUID(),
-      name: newEmpName,
-      role: newEmpRole,
-      weeklyDefault: {},
-      isActive: true,
-    };
-    const updated = [...employees, newEmp];
-    setEmployees(updated);
-    saveEmployees(updated);
-    setNewEmpName('');
+    try {
+      const newEmp: Employee = {
+        id: crypto.randomUUID(),
+        name: newEmpName,
+        role: newEmpRole,
+        weeklyDefault: {},
+        isActive: true,
+      };
+      const updated = [...employees, newEmp];
+      setEmployees(updated);
+      await saveEmployees(updated);
+      setNewEmpName('');
+    } catch (err) {
+      console.error('Failed to add employee:', err);
+      alert('Erreur lors de l\'ajout de l\'employé');
+    }
   };
 
-  const handleDeleteEmployee = (id: string) => {
+  const handleDeleteEmployee = async (id: string) => {
     if(!confirm("Supprimer cet employé ?")) return;
-    const updated = employees.filter(e => e.id !== id);
-    setEmployees(updated);
-    saveEmployees(updated);
+    try {
+      const updated = employees.filter(e => e.id !== id);
+      setEmployees(updated);
+      await saveEmployees(updated);
+    } catch (err) {
+      console.error('Failed to delete employee:', err);
+      alert('Erreur lors de la suppression de l\'employé');
+    }
   };
 
   // --- TEMPLATES ---
@@ -158,75 +196,111 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       setNewTplService(tpl.serviceType);
       setNewTplSlots(tpl.slots && tpl.slots.length > 0 ? tpl.slots : [{start: '10:00', end: '15:00'}]);
       setNewTplColor(tpl.color || '#ffffff');
-      // Ensure we switch to the role tab of the template being edited (though usually we are already there)
       setSelectedRole(tpl.role);
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
       if(!newTplName) return alert("Nom du modèle requis");
       
-      if (editingTplId) {
-          // UPDATE EXISTING
-          const updatedTpl: Template = {
-              id: editingTplId,
-              role: selectedRole,
-              name: newTplName,
-              serviceType: newTplService,
-              slots: newTplSlots,
-              color: newTplColor
-          };
-          updateTemplate(updatedTpl);
-          setTemplates(getTemplates()); // Reload
-          resetTemplateForm();
-      } else {
-          // CREATE NEW
-          const newTpl: Template = {
-              id: crypto.randomUUID(),
-              name: newTplName,
-              role: selectedRole,
-              serviceType: newTplService,
-              slots: newTplSlots,
-              color: newTplColor
-          };
-          
-          const updated = [...templates, newTpl];
-          setTemplates(updated);
-          saveTemplates(updated);
-          resetTemplateForm();
+      try {
+        if (editingTplId) {
+            const updatedTpl: Template = {
+                id: editingTplId,
+                role: selectedRole,
+                name: newTplName,
+                serviceType: newTplService,
+                slots: newTplSlots,
+                color: newTplColor
+            };
+            await updateTemplate(updatedTpl);
+            const tplsData = await getTemplates();
+            setTemplates(Array.isArray(tplsData) ? tplsData : []); 
+            resetTemplateForm();
+        } else {
+            const newTpl: Template = {
+                id: crypto.randomUUID(),
+                name: newTplName,
+                role: selectedRole,
+                serviceType: newTplService,
+                slots: newTplSlots,
+                color: newTplColor
+            };
+            
+            const updated = [...templates, newTpl];
+            setTemplates(updated);
+            await saveTemplates(updated);
+            resetTemplateForm();
+        }
+      } catch (err) {
+        console.error('Failed to save template:', err);
+        alert('Erreur lors de la sauvegarde du modèle');
       }
   };
 
-  const handleDeleteTemplate = (id: string) => {
-      // Check usage in defaults
+  const handleDeleteTemplate = async (id: string) => {
       const usageCount = employees.filter(e => e.weeklyDefault && Object.values(e.weeklyDefault).includes(id)).length;
       
-      if (usageCount > 0) {
-          if(!confirm(`Ce modèle est utilisé par défaut pour ${usageCount} employé(s). Si vous le supprimez, leurs jours deviendront "REPOS". Continuer ?`)) {
-              return;
-          }
-          // Pass 'repos' as reassign ID implies clearing the default
-          deleteTemplate(id, 'repos');
-      } else {
-          if(!confirm("Supprimer ce modèle ?")) return;
-          deleteTemplate(id);
+      try {
+        if (usageCount > 0) {
+            if(!confirm(`Ce modèle est utilisé par défaut pour ${usageCount} employé(s). Si vous le supprimez, leurs jours deviendront "REPOS". Continuer ?`)) {
+                return;
+            }
+            await deleteTemplate(id, 'repos');
+        } else {
+            if(!confirm("Supprimer ce modèle ?")) return;
+            await deleteTemplate(id);
+        }
+        await loadData();
+        if (editingTplId === id) resetTemplateForm();
+      } catch (err) {
+        console.error('Failed to delete template:', err);
+        alert('Erreur lors de la suppression du modèle');
       }
-      loadData();
-      if (editingTplId === id) resetTemplateForm();
   };
 
   // --- DEFAULTS ---
-  const handleUpdateDefault = (empId: string, dayIndex: string, tplId: string) => {
-      const updatedEmps = employees.map(e => {
-          if (e.id === empId) {
-              const newDefaults = { ...(e.weeklyDefault || {}) };
-              if (tplId) newDefaults[dayIndex] = tplId;
-              else delete newDefaults[dayIndex]; // Clear if empty
-              return { ...e, weeklyDefault: newDefaults };
+  const handleUpdateDefault = async (empId: string, dayIndex: string, tplId: string) => {
+    try {
+      await updateEmployeeWeeklyDefault(empId, dayIndex, tplId);
+      const empsData = await getEmployees();
+      setEmployees(Array.isArray(empsData) ? empsData : []);
+    } catch (err) {
+      console.error('Failed to update default:', err);
+    }
+  };
+
+  // --- ABSENCES ---
+  const handleAddAbsence = async () => {
+      if(!absEmpId || !absStart || !absEnd) return alert("Veuillez remplir tous les champs");
+      if(absStart > absEnd) return alert("Date de fin invalide");
+      
+      try {
+        await addLongAbsence({
+            employeeId: absEmpId,
+            startDate: absStart,
+            endDate: absEnd,
+            type: absType
+        });
+        await loadData();
+        // Reset dates but keep employee selected
+        setAbsStart('');
+        setAbsEnd('');
+      } catch (err) {
+        console.error('Failed to add absence:', err);
+        alert('Erreur lors de l\'ajout de l\'absence');
+      }
+  };
+
+  const handleDeleteAbsence = async (id: string) => {
+      if(confirm("Supprimer cette absence ? Cela remettra le planning par défaut sur cette période.")) {
+          try {
+            await deleteLongAbsence(id);
+            await loadData();
+          } catch (err) {
+            console.error('Failed to delete absence:', err);
+            alert('Erreur lors de la suppression de l\'absence');
           }
-          return e;
-      });
-      setEmployees(updatedEmps);
-      saveEmployees(updatedEmps);
+      }
   };
 
   if (!isOpen) return null;
@@ -241,29 +315,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+        <div className="p-4 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h2 className="text-xl font-bold text-slate-800">Paramètres</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full">
             <X size={20} />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b bg-white overflow-x-auto">
-          {['roles', 'employees', 'templates', 'defaults'].map(tab => {
+        {/* Tabs - Fixed Layout */}
+        <div className="flex border-b bg-white overflow-x-auto shrink-0 scrollbar-hide">
+          {['roles', 'employees', 'templates', 'defaults', 'absences'].map(tab => {
              let label = '';
              if(tab==='roles') label = 'Gestion Postes';
              if(tab==='employees') label = 'Liste Employés';
              if(tab==='templates') label = 'Modèles Horaires';
              if(tab==='defaults') label = 'Défauts Hebdo';
+             if(tab==='absences') label = 'Gestion Absences';
              return (
               <button 
                 key={tab}
-                className={`flex-1 min-w-[120px] py-4 font-medium text-sm uppercase tracking-wide transition-colors ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
+                className={`px-6 py-4 font-medium text-sm uppercase tracking-wide transition-colors whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:bg-slate-50'}`}
                 onClick={() => { 
                     setActiveTab(tab as any); 
                     if(tab === 'templates' || tab === 'defaults') setSelectedRole('GÉNÉRAL'); 
-                    // Reset editing state when switching tabs
                     resetTemplateForm();
                 }}
               >
@@ -443,11 +517,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                <div className="flex flex-col gap-2 mb-2">
                   <h3 className="text-lg font-bold text-slate-800">Modèles Horaires par Poste</h3>
                   
-                  {/* Role Selector Pills */}
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-2">
                       <button
                             onClick={() => { setSelectedRole('GÉNÉRAL'); resetTemplateForm(); }}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                                 selectedRole === 'GÉNÉRAL'
                                 ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
@@ -459,7 +532,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           <button
                             key={role.id}
                             onClick={() => { setSelectedRole(role.id); resetTemplateForm(); }}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                                 selectedRole === role.id 
                                 ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
@@ -675,7 +748,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             <button
                               key={role.id}
                               onClick={() => setSelectedRole(role.id)}
-                              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                              className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                                   selectedRole === role.id
                                   ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
                                   : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
@@ -741,9 +814,114 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
              </div>
           )}
 
+          {/* --- TAB: ABSENCES --- */}
+          {activeTab === 'absences' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+                  <div className="lg:col-span-2 flex flex-col min-h-0">
+                      <h3 className="text-lg font-bold text-slate-800 mb-4">Absences Longue Durée</h3>
+                      <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex-1 overflow-y-auto">
+                          {longAbsences.length === 0 ? (
+                              <div className="p-10 text-center text-slate-400 italic">
+                                  Aucune absence planifiée.
+                              </div>
+                          ) : (
+                              <table className="w-full text-sm text-left">
+                                  <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0">
+                                      <tr>
+                                          <th className="p-3">Employé</th>
+                                          <th className="p-3">Type</th>
+                                          <th className="p-3">Début</th>
+                                          <th className="p-3">Fin</th>
+                                          <th className="p-3 text-right">Actions</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                      {longAbsences.sort((a,b) => b.startDate.localeCompare(a.startDate)).map(abs => {
+                                          const emp = employees.find(e => e.id === abs.employeeId);
+                                          return (
+                                              <tr key={abs.id} className="hover:bg-slate-50">
+                                                  <td className="p-3 font-medium text-slate-800">{emp?.name || 'Inconnu'}</td>
+                                                  <td className="p-3">
+                                                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${abs.type === 'CP' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                          {abs.type}
+                                                      </span>
+                                                  </td>
+                                                  <td className="p-3 text-slate-600">{format(parseISO(abs.startDate), 'dd/MM/yyyy')}</td>
+                                                  <td className="p-3 text-slate-600">{format(parseISO(abs.endDate), 'dd/MM/yyyy')}</td>
+                                                  <td className="p-3 text-right">
+                                                      <button 
+                                                        onClick={() => handleDeleteAbsence(abs.id)}
+                                                        className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50"
+                                                        title="Supprimer (Rétablit le planning)"
+                                                      >
+                                                          <Trash2 size={16} />
+                                                      </button>
+                                                  </td>
+                                              </tr>
+                                          )
+                                      })}
+                                  </tbody>
+                              </table>
+                          )}
+                      </div>
+                  </div>
+
+                  <div className="bg-red-50 rounded-lg p-5 h-fit border border-red-100">
+                      <h4 className="font-bold text-red-900 mb-4 flex items-center gap-2">
+                          <CalendarDays size={18}/> Nouvelle Absence
+                      </h4>
+                      <div className="space-y-4">
+                          <div>
+                              <label className="block text-xs font-bold text-red-800 mb-1">Employé</label>
+                              <select 
+                                className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                value={absEmpId}
+                                onChange={e => setAbsEmpId(e.target.value)}
+                              >
+                                  {employees.filter(e => e.isActive).map(e => (
+                                      <option key={e.id} value={e.id}>{e.name}</option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-red-800 mb-1">Type</label>
+                              <select 
+                                className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                value={absType}
+                                onChange={e => setAbsType(e.target.value)}
+                              >
+                                  {ABSENCE_TYPES.map(t => (
+                                      <option key={t} value={t}>{t}</option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                  <label className="block text-xs font-bold text-red-800 mb-1">Début</label>
+                                  <input type="date" value={absStart} onChange={e => setAbsStart(e.target.value)} className="w-full border-red-200 rounded px-2 py-2 text-sm"/>
+                              </div>
+                              <div>
+                                  <label className="block text-xs font-bold text-red-800 mb-1">Fin</label>
+                                  <input type="date" value={absEnd} onChange={e => setAbsEnd(e.target.value)} className="w-full border-red-200 rounded px-2 py-2 text-sm"/>
+                              </div>
+                          </div>
+                          <button 
+                            onClick={handleAddAbsence}
+                            className="w-full bg-red-600 text-white py-2 rounded font-bold text-sm hover:bg-red-700 mt-2 shadow-sm"
+                          >
+                              Ajouter Absence
+                          </button>
+                          <p className="text-[10px] text-red-600 italic mt-2 leading-tight">
+                              Cela appliquera automatiquement ce code d'absence sur tous les plannings actifs concernés par ces dates.
+                          </p>
+                      </div>
+                  </div>
+              </div>
+          )}
+
         </div>
 
-        <div className="p-4 border-t bg-slate-50 flex justify-end">
+        <div className="p-4 border-t bg-slate-50 flex justify-end shrink-0">
           <button 
             onClick={onClose}
             className="bg-slate-800 text-white px-6 py-2 rounded-lg hover:bg-slate-900 transition-colors font-medium"

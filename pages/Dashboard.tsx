@@ -19,18 +19,17 @@ const Dashboard: React.FC = () => {
   const [newPlanningService, setNewPlanningService] = useState<'Salle' | 'Cuisine'>('Salle');
 
   useEffect(() => {
-    const loadPlannings = async () => {
+    const loadData = async () => {
       try {
         await initMockData();
-        const planningList = await getPlannings();
-        setPlannings(planningList);
-      } catch (error) {
-        console.error('Failed to load plannings:', error);
+        const data = await getPlannings();
+        setPlannings(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to load data:', err);
         setPlannings([]);
       }
     };
-    
-    loadPlannings();
+    loadData();
   }, []);
 
   const openCreateModal = () => {
@@ -50,12 +49,18 @@ const Dashboard: React.FC = () => {
     try {
       const start = new Date(newPlanningDate);
       const newP = await createPlanning(start, newPlanningService);
-      const planningList = await getPlannings();
-      setPlannings(planningList);
-      setIsCreateModalOpen(false);
-      navigate(`/planning/${newP.id}`);
-    } catch (error) {
-      console.error('Failed to create planning:', error);
+      if (newP && newP.id) {
+        const data = await getPlannings();
+        setPlannings(Array.isArray(data) ? data : []);
+        setIsCreateModalOpen(false);
+        navigate(`/planning/${newP.id}`);
+      } else {
+        console.error('Planning creation failed: no ID returned');
+        alert('Erreur lors de la création du planning');
+      }
+    } catch (err) {
+      console.error('Failed to create planning:', err);
+      alert('Erreur: ' + (err instanceof Error ? err.message : 'Erreur inconnue'));
     }
   };
 
@@ -64,10 +69,10 @@ const Dashboard: React.FC = () => {
     if(confirm('Supprimer ce planning ?')) {
       try {
         await deletePlanning(id);
-        const planningList = await getPlannings();
-        setPlannings(planningList);
-      } catch (error) {
-        console.error('Failed to delete planning:', error);
+        const data = await getPlannings();
+        setPlannings(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to delete planning:', err);
       }
     }
   };
@@ -102,6 +107,11 @@ const Dashboard: React.FC = () => {
     displayEnd = endOfWeek(new Date(newPlanningDate), { weekStartsOn: 1 });
   }
 
+  const handleLogout = () => {
+    // Simulation de déconnexion
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
@@ -120,7 +130,10 @@ const Dashboard: React.FC = () => {
              >
                <Plus size={18} /> Nouveau Planning
              </button>
-             <button className="text-slate-500 hover:text-slate-800 flex items-center gap-2 text-sm font-medium">
+             <button 
+               onClick={handleLogout}
+               className="text-slate-500 hover:text-slate-800 flex items-center gap-2 text-sm font-medium"
+             >
                <LogOut size={18} /> <span className="hidden sm:inline">Déconnexion</span>
              </button>
           </div>

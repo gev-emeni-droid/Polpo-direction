@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Users, Calendar, Clock } from 'lucide-react';
-import { Employee, Shift, ShiftServiceType } from '../types';
-import { getEmployees, saveEmployees, getRoles } from '../services/storage';
-import { format, parseISO } from 'date-fns';
+import { X, UserPlus, Users, CalendarDays, Clock, AlertCircle } from 'lucide-react';
+import { Employee, Shift, ShiftServiceType, ABSENCE_TYPES } from '../types';
+import { getEmployees, saveEmployees, getRoles, addLongAbsence } from '../services/storage';
+import { format, parseISO, isWithinInterval, startOfDay, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface AddShiftModalProps {
@@ -14,17 +14,19 @@ interface AddShiftModalProps {
     employeeName: string; 
     employeeRole: string; 
     isExtra: boolean;
-    date: string;
+    date?: string; // Single date (Legacy/Standard)
+    dates?: string[]; // Multiple dates (Absence Longue Durée)
     shift: Shift;
     extraCount?: number;
     extraType?: "Hôtesse LBE" | "Brigad Plage" | "Agent de sécurité";
   }) => void;
   weekStart: string; // YYYY-MM-DD
   weekDates: string[];
+  onSuccess?: () => void; // Callback to refresh data without reload
 }
 
-const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, weekDates }) => {
-  const [mode, setMode] = useState<'new_employee' | 'extra'>('new_employee');
+const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, weekDates, onSuccess }) => {
+  const [mode, setMode] = useState<'new_employee' | 'extra' | 'long_absence'>('new_employee');
   const [employees, setEmployees] = useState<Employee[]>([]);
   
   // -- Common --
@@ -41,19 +43,38 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
   const [extraCount, setExtraCount] = useState<number>(1);
   const [extraType, setExtraType] = useState<"Hôtesse LBE" | "Brigad Plage" | "Agent de sécurité">("Hôtesse LBE");
 
-  const roles = getRoles();
+  // -- Long Absence Mode --
+  const [selectedEmpId, setSelectedEmpId] = useState<string>('');
+  const [absenceType, setAbsenceType] = useState<string>(ABSENCE_TYPES[0]);
+  const [startDate, setStartDate] = useState(weekDates[0]);
+  const [endDate, setEndDate] = useState(weekDates[weekDates.length - 1]);
+
+  const [roles, setRoles] = useState<{id:string, label:string}[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      const allEmps = getEmployees();
-      setEmployees(allEmps);
+      loadFormData();
+    }
+  }, [isOpen, weekDates]);
+
+  const loadFormData = async () => {
+    try {
+      const rolesData = await getRoles();
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+      
+      const allEmps = await getEmployees();
+      const activeEmps = Array.isArray(allEmps) ? allEmps.filter(e => e.isActive) : [];
+      setEmployees(activeEmps);
       
       // Reset form
       setMode('new_employee');
       
       setNewEmpName('');
-      if (roles.length > 0) setNewEmpRole(roles[0].id);
-      else setNewEmpRole('');
+      if (Array.isArray(rolesData) && rolesData.length > 0) {
+        setNewEmpRole(rolesData[0].id);
+      } else {
+        setNewEmpRole('');
+      }
 
       setShiftLabel('');
 
@@ -61,12 +82,24 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
       setExtraCount(1);
       setExtraType("Hôtesse LBE");
       
+      // Init Absence
+      if (activeEmps.length > 0) setSelectedEmpId(activeEmps[0].id);
+      setAbsenceType("CP"); // Default to CP or first type
+
       setStartTime('10:00');
       setEndTime('15:00');
       // Default date is first day
-      if (weekDates.length > 0) setSelectedDate(weekDates[0]);
+      if (weekDates.length > 0) {
+          setSelectedDate(weekDates[0]);
+          setStartDate(weekDates[0]);
+          setEndDate(weekDates[weekDates.length - 1]);
+      }
+    } catch (err) {
+      console.error('Failed to load form data:', err);
+      setRoles([]);
+      setEmployees([]);
     }
-  }, [isOpen, weekDates]);
+  };
 
   const calculateServiceType = (start: string, end: string): ShiftServiceType => {
     const hasMidi = start < "16:00";
@@ -84,7 +117,31 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
     return capitalize(format(d, 'eeee d MMMM', { locale: fr }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    // 1. ABSENCE LONGUE DURÉE
+    if (mode === 'long_absence') {
+        if (!selectedEmpId) return alert("Veuillez sélectionner un employé.");
+        if (startDate > endDate) return alert("La date de fin doit être après la date de début.");
+        
+        try {
+          // Use central storage to add the absence, which will propagate to plannings automatically
+          await addLongAbsence({
+              employeeId: selectedEmpId,
+              type: absenceType,
+              startDate: startDate,
+              endDate: endDate
+          });
+          
+          if (onSuccess) onSuccess();
+          onClose();
+        } catch (err) {
+          console.error('Failed to add absence:', err);
+          alert('Erreur lors de l\'ajout de l\'absence');
+        }
+        return;
+    }
+
+    // 2. OTHER MODES (Single Day)
     if (!startTime || !endTime) return alert("Heures requises.");
 
     let empId = '';
@@ -92,62 +149,67 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
     let empRole = '';
     let isExtra = false;
 
-    if (mode === 'new_employee') {
-       if (!newEmpName.trim()) return alert("Nom de l'employé requis.");
-       
-       // Create new employee globally
-       const newEmp: Employee = {
-           id: crypto.randomUUID(),
-           name: newEmpName.trim(),
-           role: newEmpRole,
-           isActive: true,
-           weeklyDefault: {}
-       };
-       
-       // Save to storage
-       const updatedEmployees = [...employees, newEmp];
-       saveEmployees(updatedEmployees);
-       setEmployees(updatedEmployees); // Update local state if needed
-       
-       empId = newEmp.id;
-       empName = newEmp.name;
-       empRole = newEmp.role;
-       isExtra = false;
+    try {
+      if (mode === 'new_employee') {
+         if (!newEmpName.trim()) return alert("Nom de l'employé requis.");
+         
+         // Create new employee globally
+         const newEmp: Employee = {
+             id: crypto.randomUUID(),
+             name: newEmpName.trim(),
+             role: newEmpRole,
+             isActive: true,
+             weeklyDefault: {}
+         };
+         
+         // Save to storage
+         const updatedEmployees = [...employees, newEmp];
+         await saveEmployees(updatedEmployees);
+         setEmployees(updatedEmployees); // Update local state if needed
+         
+         empId = newEmp.id;
+         empName = newEmp.name;
+         empRole = newEmp.role;
+         isExtra = false;
 
-    } else {
-       // Extra Mode: Anonymous, just passing counts and type
-       empId = 'extra-placeholder';
-       empName = 'Extra';
-       empRole = 'EXTRA'; 
-       isExtra = true;
+      } else {
+         // Extra Mode: Anonymous, just passing counts and type
+         empId = 'extra-placeholder';
+         empName = 'Extra';
+         empRole = 'EXTRA'; 
+         isExtra = true;
+      }
+
+      const sType = calculateServiceType(startTime, endTime);
+      
+      // Create segment (used for Employee row, ignored for Extra logic in parent but structure needed)
+      const newShift: Shift = {
+        date: selectedDate,
+        type: 'travail',
+        serviceType: sType,
+        segments: [{
+            type: 'horaire',
+            start: startTime,
+            end: endTime,
+        }]
+      };
+
+      onSave({
+        employeeId: empId,
+        employeeName: empName,
+        employeeRole: empRole,
+        isExtra,
+        date: selectedDate,
+        shift: newShift,
+        extraCount: isExtra ? extraCount : undefined,
+        extraType: isExtra ? extraType : undefined
+      });
+      
+      onClose();
+    } catch (err) {
+      console.error('Failed to submit:', err);
+      alert('Erreur lors de la soumission du formulaire');
     }
-
-    const sType = calculateServiceType(startTime, endTime);
-    
-    // Create segment (used for Employee row, ignored for Extra logic in parent but structure needed)
-    const newShift: Shift = {
-      date: selectedDate,
-      type: 'travail',
-      serviceType: sType,
-      segments: [{
-          type: 'horaire',
-          start: startTime,
-          end: endTime,
-      }]
-    };
-
-    onSave({
-      employeeId: empId,
-      employeeName: empName,
-      employeeRole: empRole,
-      isExtra,
-      date: selectedDate,
-      shift: newShift,
-      extraCount: isExtra ? extraCount : undefined,
-      extraType: isExtra ? extraType : undefined
-    });
-    
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -157,7 +219,7 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Calendar className="text-blue-600" /> Ajouter au planning
+            <UserPlus className="text-blue-600" /> Ajouter au planning
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X size={24} />
@@ -165,18 +227,24 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
         </div>
 
         {/* Mode Switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
+        <div className="flex bg-slate-100 p-1 rounded-lg mb-6 overflow-hidden">
           <button
             onClick={() => setMode('new_employee')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${mode === 'new_employee' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] md:text-xs font-bold uppercase rounded-md transition-all ${mode === 'new_employee' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <UserPlus size={16} /> Nouvel Employé
+            <UserPlus size={14} /> Nouvel Employé
           </button>
           <button
             onClick={() => setMode('extra')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${mode === 'extra' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] md:text-xs font-bold uppercase rounded-md transition-all ${mode === 'extra' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <Users size={16} /> Extra / Renfort
+            <Users size={14} /> Extra / Renfort
+          </button>
+          <button
+            onClick={() => setMode('long_absence')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] md:text-xs font-bold uppercase rounded-md transition-all ${mode === 'long_absence' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <CalendarDays size={14} /> Absence Longue
           </button>
         </div>
 
@@ -245,69 +313,138 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
              </>
           )}
 
+          {/* --- TAB 3: LONG ABSENCE --- */}
+          {mode === 'long_absence' && (
+             <>
+               <div className="bg-red-50 border border-red-100 text-red-800 px-3 py-2 rounded text-xs font-semibold">
+                   Applique un code d'absence (CP, AM, etc.) sur une plage de dates pour un employé existant.
+               </div>
+
+               <div>
+                   <label className="block text-sm font-semibold text-slate-700 mb-1">Employé <span className="text-red-500">*</span></label>
+                   <select 
+                     className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                     value={selectedEmpId}
+                     onChange={e => setSelectedEmpId(e.target.value)}
+                   >
+                     {employees.map(e => (
+                         <option key={e.id} value={e.id}>{e.name}</option>
+                     ))}
+                   </select>
+               </div>
+
+               <div>
+                   <label className="block text-sm font-semibold text-slate-700 mb-1">Type d'absence <span className="text-red-500">*</span></label>
+                   <select 
+                     className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                     value={absenceType}
+                     onChange={e => setAbsenceType(e.target.value)}
+                   >
+                     {ABSENCE_TYPES.map(t => (
+                         <option key={t} value={t}>{t}</option>
+                     ))}
+                   </select>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                   <div>
+                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date Début</label>
+                       <input 
+                         type="date"
+                         className="w-full border border-slate-300 rounded px-2 py-2 text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                         value={startDate}
+                         onChange={e => setStartDate(e.target.value)}
+                       />
+                   </div>
+                   <div>
+                       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date Fin</label>
+                       <input 
+                         type="date"
+                         className="w-full border border-slate-300 rounded px-2 py-2 text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                         value={endDate}
+                         onChange={e => setEndDate(e.target.value)}
+                       />
+                   </div>
+               </div>
+             </>
+          )}
+
           <hr className="border-slate-100" />
 
-          {/* --- COMMON FIELDS --- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Date</label>
-                <select 
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm capitalize"
-                  value={selectedDate}
-                  onChange={e => setSelectedDate(e.target.value)}
-                >
-                   {weekDates.map(d => (
-                     <option key={d} value={d}>
-                       {formatFrenchDate(d)}
-                     </option>
-                   ))}
-                </select>
-             </div>
-             
-             {mode === 'new_employee' && (
-               <div className="col-span-1 md:col-span-2">
-                 <label className="block text-sm font-semibold text-slate-700 mb-1">Libellé (optionnel)</label>
-                 <input 
-                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-                   placeholder="Ex: Formation, Essai..."
-                   value={shiftLabel}
-                   onChange={e => setShiftLabel(e.target.value)}
-                 />
-               </div>
-             )}
-          </div>
+          {/* --- COMMON FIELDS (For Single Shift Modes) --- */}
+          {mode !== 'long_absence' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="col-span-1 md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Date</label>
+                    <select 
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm capitalize"
+                      value={selectedDate}
+                      onChange={e => setSelectedDate(e.target.value)}
+                    >
+                       {weekDates.map(d => (
+                         <option key={d} value={d}>
+                           {formatFrenchDate(d)}
+                         </option>
+                       ))}
+                    </select>
+                 </div>
+                 
+                 {mode === 'new_employee' && (
+                   <div className="col-span-1 md:col-span-2">
+                     <label className="block text-sm font-semibold text-slate-700 mb-1">Libellé (optionnel)</label>
+                     <input 
+                       className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                       placeholder="Ex: Formation, Essai..."
+                       value={shiftLabel}
+                       onChange={e => setShiftLabel(e.target.value)}
+                     />
+                   </div>
+                 )}
+              </div>
 
-          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-             <div>
-                <label className="flex items-center gap-1 text-xs font-bold text-slate-500 uppercase mb-1"><Clock size={12}/> Début</label>
-                <input 
-                  type="time" 
-                  className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                />
-             </div>
-             <div>
-                <label className="flex items-center gap-1 text-xs font-bold text-slate-500 uppercase mb-1"><Clock size={12}/> Fin</label>
-                <input 
-                  type="time" 
-                  className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white"
-                  value={endTime}
-                  onChange={e => setEndTime(e.target.value)}
-                />
-             </div>
-             <div className="col-span-2 text-xs text-center text-slate-400 italic mt-1">
-                {startTime < "16:00" ? (endTime >= "16:00" ? "Compté en Midi & Soir" : "Compté en Midi") : "Compté en Soir"}
-             </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                 <div>
+                    <label className="flex items-center gap-1 text-xs font-bold text-slate-500 uppercase mb-1"><Clock size={12}/> Début</label>
+                    <input 
+                      type="time" 
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white"
+                      value={startTime}
+                      onChange={e => setStartTime(e.target.value)}
+                    />
+                 </div>
+                 <div>
+                    <label className="flex items-center gap-1 text-xs font-bold text-slate-500 uppercase mb-1"><Clock size={12}/> Fin</label>
+                    <input 
+                      type="time" 
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white"
+                      value={endTime}
+                      onChange={e => setEndTime(e.target.value)}
+                    />
+                 </div>
+                 <div className="col-span-2 text-xs text-center text-slate-400 italic mt-1">
+                    {startTime < "16:00" ? (endTime >= "16:00" ? "Compté en Midi & Soir" : "Compté en Midi") : "Compté en Soir"}
+                 </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mt-6 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors">
             Annuler
           </button>
-          <button onClick={handleSubmit} className={`flex-1 py-2.5 rounded-lg text-white font-medium shadow-sm transition-colors ${mode === 'extra' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-            {mode === 'extra' ? 'Ajouter Renfort' : 'Créer Employé'}
+          <button 
+            onClick={handleSubmit} 
+            className={`flex-1 py-2.5 rounded-lg text-white font-medium shadow-sm transition-colors ${
+              mode === 'extra' ? 'bg-purple-600 hover:bg-purple-700' : 
+              mode === 'long_absence' ? 'bg-red-600 hover:bg-red-700' :
+              'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {mode === 'extra' ? 'Ajouter Renfort' : 
+             mode === 'long_absence' ? 'Appliquer Absences' :
+             'Créer Employé'}
           </button>
         </div>
       </div>
