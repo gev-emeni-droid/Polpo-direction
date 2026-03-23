@@ -56,7 +56,7 @@ export async function fetchJson<T = any>(
     return data as T;
   } catch (err) {
     if (err instanceof Error && 'status' in err && 'url' in err) throw err;
-    
+
     const error = new Error(
       err instanceof Error ? err.message : 'Unknown fetch error'
     ) as ApiError;
@@ -232,7 +232,7 @@ export async function listRoles() {
 
 export async function getRole(id: string) {
   try {
-    return await fetchJson(`/api/roles/${id}`);
+    return await fetchJson(`/api/roles/${encodeURIComponent(id)}`);
   } catch (error) {
     console.error(`Failed to fetch role ${id}:`, error);
     return null;
@@ -242,7 +242,7 @@ export async function getRole(id: string) {
 export async function saveRole(role: any) {
   try {
     if (role.id) {
-      return await fetchJson(`/api/roles/${role.id}`, {
+      return await fetchJson(`/api/roles/${encodeURIComponent(role.id)}`, {
         method: 'PUT',
         body: JSON.stringify(role),
       });
@@ -260,7 +260,7 @@ export async function saveRole(role: any) {
 
 export async function deleteRole(id: string) {
   try {
-    return await fetchJson(`/api/roles/${id}`, {
+    return await fetchJson(`/api/roles/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
   } catch (error) {

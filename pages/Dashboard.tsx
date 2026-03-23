@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, LogOut, Calendar, Archive, Trash, Edit, ExternalLink, X, Info } from 'lucide-react';
+import { Plus, Search, LogOut, Calendar, Archive, Trash, Edit, ExternalLink, X, Info, FileText } from 'lucide-react';
 import { getPlannings, createPlanning, deletePlanning, initMockData } from '../services/storage';
 import { Planning } from '../types';
 import { format, startOfWeek, parseISO, endOfWeek, isMonday } from 'date-fns';
@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
     const day = start.getDay();
     const diff = start.getDate() - day + (day === 0 ? -6 : 1) + 7; // Next monday
     start.setDate(diff);
-    
+
     setNewPlanningDate(format(start, 'yyyy-MM-dd'));
     setNewPlanningService('Salle');
     setIsCreateModalOpen(true);
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if(confirm('Supprimer ce planning ?')) {
+    if (confirm('Supprimer ce planning ?')) {
       try {
         await deletePlanning(id);
         const data = await getPlannings();
@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
   const handleArchive = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // In real app, toggle status
-    const updated = plannings.map(p => p.id === id ? {...p, status: 'archived' as const} : p);
+    const updated = plannings.map(p => p.id === id ? { ...p, status: 'archived' as const } : p);
     alert("L'archivage est automatique selon la date, mais fonctionnel ici pour la démo.");
   };
 
@@ -108,8 +108,8 @@ const Dashboard: React.FC = () => {
   }
 
   const handleLogout = () => {
-    // Simulation de déconnexion
-    window.location.reload();
+    // Redirection vers la page de connexion
+    window.location.href = 'https://polpo.connexion.l-iamani.com/';
   };
 
   return (
@@ -118,59 +118,66 @@ const Dashboard: React.FC = () => {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="bg-blue-600 text-white p-2 rounded-lg">
-               <Calendar size={24} />
-             </div>
-             <h1 className="text-xl font-bold text-slate-800 tracking-tight">Planning Polpo</h1>
+            <div className="bg-brand text-white p-2 rounded-lg">
+              <Calendar size={24} />
+            </div>
+            <h1 className="text-xl font-bold text-brand tracking-tight">Planning Polpo</h1>
           </div>
+
           <div className="flex items-center gap-4">
-             <button 
-               onClick={openCreateModal}
-               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all flex items-center gap-2"
-             >
-               <Plus size={18} /> Nouveau Planning
-             </button>
-             <button 
-               onClick={handleLogout}
-               className="text-slate-500 hover:text-slate-800 flex items-center gap-2 text-sm font-medium"
-             >
-               <LogOut size={18} /> <span className="hidden sm:inline">Déconnexion</span>
-             </button>
+            <button
+              onClick={() => navigate('/facture')}
+              className="bg-white border border-brand text-brand hover:bg-brand/10 px-4 py-2 rounded-lg font-medium shadow-sm transition-all flex items-center gap-2"
+            >
+              <FileText size={18} /> Factures
+            </button>
+            <button
+              onClick={openCreateModal}
+              className="bg-brand hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-all flex items-center gap-2"
+            >
+              <Plus size={18} /> Nouveau Planning
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-slate-500 hover:text-slate-800 flex items-center gap-2 text-sm font-medium"
+            >
+              <LogOut size={18} /> <span className="hidden sm:inline">Déconnexion</span>
+            </button>
           </div>
         </div>
-      </header>
+      </header >
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Controls */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Rechercher une date, un service..." 
+            <input
+              type="text"
+              placeholder="Rechercher une date, un service..."
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-             <div className="flex bg-slate-100 p-1 rounded-lg">
-                {['Tout', 'Salle', 'Cuisine'].map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilterService(f as any)}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filterService === f ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    {f}
-                  </button>
-                ))}
-             </div>
-             <button 
-               onClick={() => setSortAsc(!sortAsc)}
-               className="ml-auto md:ml-2 px-3 py-2 border rounded-lg hover:bg-slate-50 text-slate-600 text-sm"
-             >
-               {sortAsc ? 'Plus ancien' : 'Plus récent'}
-             </button>
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              {['Tout', 'Salle', 'Cuisine'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilterService(f as any)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${filterService === f ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setSortAsc(!sortAsc)}
+              className="ml-auto md:ml-2 px-3 py-2 border rounded-lg hover:bg-slate-50 text-slate-600 text-sm"
+            >
+              {sortAsc ? 'Plus ancien' : 'Plus récent'}
+            </button>
           </div>
         </div>
 
@@ -199,7 +206,7 @@ const Dashboard: React.FC = () => {
             <div className="w-2 h-6 bg-slate-400 rounded-full"></div>
             Archives
           </h2>
-           {archivedPlannings.length === 0 ? (
+          {archivedPlannings.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-400 text-sm">Aucune archive.</p>
             </div>
@@ -215,86 +222,90 @@ const Dashboard: React.FC = () => {
       </main>
 
       {/* CREATE MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-slate-800">Nouveau Planning</h2>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Service</label>
-                <select 
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  value={newPlanningService}
-                  onChange={(e) => setNewPlanningService(e.target.value as 'Salle' | 'Cuisine')}
-                >
-                  <option value="Salle">Salle</option>
-                  <option value="Cuisine">Cuisine</option>
-                </select>
+      {
+        isCreateModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-800">Nouveau Planning</h2>
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={24} />
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Début de semaine (toujours un lundi)</label>
-                <p className="text-xs text-slate-500 mb-2">Choisissez le lundi de la semaine que vous voulez planifier.</p>
-                <input 
-                  type="date" 
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={newPlanningDate}
-                  onChange={(e) => setNewPlanningDate(e.target.value)}
-                />
-              </div>
-              
-              {/* Computed Date Feedback */}
-              {displayStart && displayEnd && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
-                   <Info className="text-blue-600 shrink-0 mt-0.5" size={18} />
-                   <div className="text-sm text-blue-800">
-                      Le planning sera créé pour la semaine du <br/>
-                      <span className="font-bold">Lundi {format(displayStart, 'dd/MM/yyyy')}</span> au <span className="font-bold">Dimanche {format(displayEnd, 'dd/MM/yyyy')}</span>.
-                   </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Service</label>
+                  <select
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    value={newPlanningService}
+                    onChange={(e) => setNewPlanningService(e.target.value as 'Salle' | 'Cuisine')}
+                  >
+                    <option value="Salle">Salle</option>
+                    <option value="Cuisine">Cuisine</option>
+                  </select>
                 </div>
-              )}
 
-              <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 bg-white border border-slate-300 text-slate-700 font-medium py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button 
-                  onClick={handleConfirmCreate}
-                  disabled={!newPlanningDate}
-                  className="flex-1 bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Créer le planning
-                </button>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Début de semaine (toujours un lundi)</label>
+                  <p className="text-xs text-slate-500 mb-2">Choisissez le lundi de la semaine que vous voulez planifier.</p>
+                  <input
+                    type="date"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={newPlanningDate}
+                    onChange={(e) => setNewPlanningDate(e.target.value)}
+                  />
+                </div>
+
+                {/* Computed Date Feedback */}
+                {displayStart && displayEnd && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+                    <Info className="text-blue-600 shrink-0 mt-0.5" size={18} />
+                    <div className="text-sm text-blue-800">
+                      Le planning sera créé pour la semaine du <br />
+                      <span className="font-bold">Lundi {format(displayStart, 'dd/MM/yyyy')}</span> au <span className="font-bold">Dimanche {format(displayEnd, 'dd/MM/yyyy')}</span>.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="flex-1 bg-white border border-slate-300 text-slate-700 font-medium py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleConfirmCreate}
+                    disabled={!newPlanningDate}
+                    className="flex-1 bg-brand text-white font-medium py-2.5 rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Créer le planning
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+
     </div>
   );
 };
 
-const PlanningCard: React.FC<{ 
-  planning: Planning, 
-  onClick: () => void, 
+const PlanningCard: React.FC<{
+  planning: Planning,
+  onClick: () => void,
   onDelete: (id: string, e: React.MouseEvent) => void,
   onArchive?: (id: string, e: React.MouseEvent) => void,
-  isArchived?: boolean 
+  isArchived?: boolean
 }> = ({ planning, onClick, onDelete, onArchive, isArchived }) => {
   const start = parseISO(planning.weekStart);
   const end = parseISO(planning.weekEnd);
 
   return (
-    <div 
+    <div
       onClick={onClick}
       className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden"
     >
@@ -311,26 +322,26 @@ const PlanningCard: React.FC<{
           )}
         </div>
         <h3 className="text-lg font-bold text-slate-800 mb-1">
-          Semaine du {format(start, 'dd MMM', {locale: fr})}
+          Semaine du {format(start, 'dd MMM', { locale: fr })}
         </h3>
         <p className="text-sm text-slate-500 mb-6">
-          au {format(end, 'dd MMM yyyy', {locale: fr})}
+          au {format(end, 'dd MMM yyyy', { locale: fr })}
         </p>
 
         <div className="flex items-center justify-between mt-auto">
           <button className="text-sm font-medium text-blue-600 flex items-center gap-1 group-hover:underline">
             Ouvrir <ExternalLink size={14} />
           </button>
-          
+
           <div className="flex gap-2">
             {!isArchived && onArchive && (
-               <button onClick={(e) => onArchive(planning.id, e)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors" title="Archiver">
-                 <Archive size={16} />
-               </button>
+              <button onClick={(e) => onArchive(planning.id, e)} className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors" title="Archiver">
+                <Archive size={16} />
+              </button>
             )}
-             <button onClick={(e) => onDelete(planning.id, e)} className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors" title="Supprimer">
-                <Trash size={16} />
-             </button>
+            <button onClick={(e) => onDelete(planning.id, e)} className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors" title="Supprimer">
+              <Trash size={16} />
+            </button>
           </div>
         </div>
       </div>
