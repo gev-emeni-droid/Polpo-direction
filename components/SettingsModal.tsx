@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../services/api';
 import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw, CalendarDays, Palette, Search } from 'lucide-react';
 import { Employee, Template, STANDARD_ROLES, ShiftServiceType, TimeSlot, ABSENCE_TYPES, LongAbsence } from '../types';
 import {
@@ -43,6 +44,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
   // -- Theme Tab --
   const [currentTheme, setCurrentTheme] = useState('#4AA3A2');
 
+  // --- PIN Code (Profil) ---
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinInput, setPinInput] = useState('');
+  const [pinEditMode, setPinEditMode] = useState(false);
+  const [pinError, setPinError] = useState('');
+  const [pinCheckMode, setPinCheckMode] = useState(false);
+  const [pinCheckInput, setPinCheckInput] = useState('');
+  const [pinCheckError, setPinCheckError] = useState('');
+
 
   // -- Employee Tab --
   const [newEmpName, setNewEmpName] = useState('');
@@ -74,11 +85,77 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
   const [absStart, setAbsStart] = useState('');
   const [absEnd, setAbsEnd] = useState('');
 
+
   useEffect(() => {
     if (isOpen) {
       loadData();
+      loadPin();
     }
   }, [isOpen]);
+
+  // Chargement du PIN depuis les settings (backend)
+  const loadPin = async () => {
+    try {
+      const pin = await api.getSetting('profil_pin');
+      if (typeof pin === 'string' && pin.length === 4) {
+        setPinEnabled(true);
+        setPinValue(pin);
+      } else {
+        setPinEnabled(false);
+        setPinValue('');
+      }
+    } catch {
+      setPinEnabled(false);
+      setPinValue('');
+    }
+    setPinEditMode(false);
+    setPinError('');
+    setPinCheckMode(false);
+    setPinCheckInput('');
+    setPinCheckError('');
+  };
+
+  // Sauvegarde ou désactivation du PIN
+  const handleSavePin = async () => {
+    setPinError('');
+    if (!/^[0-9]{4}$/.test(pinInput)) {
+      setPinError('Le code PIN doit contenir exactement 4 chiffres.');
+      return;
+    }
+    try {
+      await api.setSetting('profil_pin', pinInput);
+      setPinValue(pinInput);
+      setPinEnabled(true);
+      setPinEditMode(false);
+      setPinInput('');
+    } catch {
+      setPinError('Erreur lors de la sauvegarde du code PIN.');
+    }
+  };
+
+  const handleDisablePin = async () => {
+    try {
+      await api.deleteSetting('profil_pin');
+      setPinEnabled(false);
+      setPinValue('');
+      setPinEditMode(false);
+      setPinInput('');
+    } catch {
+      setPinError('Erreur lors de la désactivation du code PIN.');
+    }
+  };
+
+  // Vérification du PIN à l'accès à l'onglet Profil
+  const handleCheckPin = () => {
+    setPinCheckError('');
+    if (pinCheckInput === pinValue) {
+      setPinCheckMode(false);
+      setPinCheckInput('');
+      setPinCheckError('');
+    } else {
+      setPinCheckError('Code PIN incorrect.');
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -419,7 +496,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
         <div className="flex border-b bg-white overflow-x-auto shrink-0 scrollbar-hide">
           {['theme', 'roles', 'employees', 'templates', 'defaults', 'absences'].map(tab => {
             let label = '';
-            if (tab === 'theme') label = 'Apparence';
+            if (tab === 'theme') label = 'Profil';
             if (tab === 'roles') label = 'Gestion Postes';
             if (tab === 'employees') label = 'Liste Employés';
             if (tab === 'templates') label = 'Modèles Horaires';
@@ -431,7 +508,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                 className={`px-6 py-4 font-medium text-sm uppercase tracking-wide transition-colors whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-b-2 border-brand text-brand bg-brand/5' : 'text-slate-500 hover:bg-slate-50'}`}
                 style={activeTab === tab ? { borderColor: currentTheme, color: currentTheme, backgroundColor: `${currentTheme} 10` } : {}}
                 onClick={() => {
-                  setActiveTab(tab as any);
+                  // Si on clique sur Profil et qu'un PIN est activé, demander le code
+                  if (tab === 'theme' && pinEnabled) {
+                    setPinCheckMode(true);
+                    setActiveTab(tab as any);
+                  } else {
+                    setActiveTab(tab as any);
+                  }
                   if (tab === 'templates' || tab === 'defaults') setSelectedRole('GÉNÉRAL');
                   resetTemplateForm();
                 }}
@@ -449,6 +532,69 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
           {/* --- TAB:THEME --- */}
           {activeTab === 'theme' && (
             <div className="max-w-4xl mx-auto space-y-8">
+              {/* Gestion du code PIN pour l'accès à l'onglet Profil */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <Palette className="text-slate-400" size={20} />
+                  Sécurité de l'onglet Profil
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Activez un code PIN à 4 chiffres pour protéger l'accès à cet onglet.
+                </p>
+                {pinEnabled && !pinEditMode && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-4">
+                      <span className="font-mono text-lg tracking-widest">PIN : ****</span>
+                      <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700" onClick={() => setPinEditMode(true)}>Modifier</button>
+                      <button className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600" onClick={handleDisablePin}>Désactiver</button>
+                    </div>
+                  </div>
+                )}
+                {(!pinEnabled || pinEditMode) && (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="password"
+                      maxLength={4}
+                      pattern="[0-9]*"
+                      inputMode="numeric"
+                      className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                      placeholder="----"
+                      value={pinInput}
+                      onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700" onClick={handleSavePin}>Enregistrer</button>
+                      {pinEnabled && <button className="bg-slate-400 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
+                    </div>
+                    {pinError && <div className="text-red-600 text-xs mt-1">{pinError}</div>}
+                  </div>
+                )}
+              </div>
+
+              {/* Saisie du PIN si protection activée */}
+              {pinCheckMode && pinEnabled && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                  <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center">
+                    <h4 className="font-bold text-lg mb-2">Code PIN requis</h4>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      pattern="[0-9]*"
+                      inputMode="numeric"
+                      className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                      placeholder="----"
+                      value={pinCheckInput}
+                      onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
+                      onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
+                      autoFocus
+                    />
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded mt-4 font-bold hover:bg-blue-700" onClick={handleCheckPin}>Valider</button>
+                    {pinCheckError && <div className="text-red-600 text-xs mt-2">{pinCheckError}</div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Couleur principale */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
                 <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                   <Palette className="text-slate-400" size={20} />
