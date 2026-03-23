@@ -540,32 +540,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                   <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl pointer-events-none" />
                   {/* Modale PIN centrée, en flex, sans compresser le parent */}
                   <div className="absolute inset-0 z-50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center relative">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl min-w-[340px] min-h-[220px] flex flex-col items-center justify-center relative">
                       <button
-                        className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                        className="absolute top-3 right-3 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
                         aria-label="Fermer"
                         onClick={() => {
                           setPinCheckMode(false);
                           setActiveTab('roles');
                         }}
                       >
-                        <X size={20} />
+                        <X size={24} />
                       </button>
-                      <h4 className="font-bold text-lg mb-2">Code PIN requis</h4>
+                      <h4 className="font-bold text-xl mb-6">Code PIN requis</h4>
                       <input
                         type="password"
                         maxLength={4}
                         pattern="[0-9]*"
                         inputMode="numeric"
-                        className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                        className="border rounded px-5 py-3 w-40 text-center font-mono text-2xl tracking-widest mb-6 shadow-sm"
                         placeholder="----"
                         value={pinCheckInput}
                         onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
                         onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
                         autoFocus
                       />
-                      <button className="bg-blue-600 text-white px-4 py-2 rounded mt-4 font-bold hover:bg-blue-700" onClick={handleCheckPin}>Valider</button>
-                      {pinCheckError && <div className="text-red-600 text-xs mt-2">{pinCheckError}</div>}
+                      <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-base hover:bg-blue-700 transition-all" onClick={handleCheckPin}>Valider</button>
+                      {pinCheckError && <div className="text-red-600 text-sm mt-4">{pinCheckError}</div>}
                     </div>
                   </div>
                 </>
