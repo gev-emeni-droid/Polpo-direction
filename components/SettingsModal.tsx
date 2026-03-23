@@ -532,11 +532,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
           {/* --- TAB:THEME --- */}
           {activeTab === 'theme' && (
             <div className="max-w-4xl mx-auto space-y-8 relative">
-              {/* Overlay si PIN requis */}
+              {/* Overlay si PIN requis (floute uniquement le contenu de la modale) */}
               {pinCheckMode && pinEnabled && (
-                <div className="absolute inset-0 z-40 flex items-center justify-center">
-                  <div className="fixed inset-0 bg-white/90 backdrop-blur-xl z-40" />
-                  <div className="z-50 w-full flex items-center justify-center">
+                <>
+                  <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl flex items-center justify-center" />
+                  <div className="absolute inset-0 z-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center relative">
                       <button
                         className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
@@ -565,7 +565,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       {pinCheckError && <div className="text-red-600 text-xs mt-2">{pinCheckError}</div>}
                     </div>
                   </div>
-                </div>
+                </>
               )}
 
               {/* Affichage du contenu SEULEMENT si le PIN est validé ou non activé */}
