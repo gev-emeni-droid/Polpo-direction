@@ -531,104 +531,119 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
           {/* --- TAB:THEME --- */}
           {activeTab === 'theme' && (
-            <div className="max-w-4xl mx-auto space-y-8">
-              {/* Gestion du code PIN pour l'accès à l'onglet Profil */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <Palette className="text-slate-400" size={20} />
-                  Sécurité de l'onglet Profil
-                </h3>
-                <p className="text-sm text-slate-500 mb-4">
-                  Activez un code PIN à 4 chiffres pour protéger l'accès à cet onglet.
-                </p>
-                {pinEnabled && !pinEditMode && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-4">
-                      <span className="font-mono text-lg tracking-widest">PIN : ****</span>
-                      <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700" onClick={() => setPinEditMode(true)}>Modifier</button>
-                      <button className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600" onClick={handleDisablePin}>Désactiver</button>
-                    </div>
-                  </div>
-                )}
-                {(!pinEnabled || pinEditMode) && (
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="password"
-                      maxLength={4}
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
-                      placeholder="----"
-                      value={pinInput}
-                      onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
-                    />
-                    <div className="flex gap-2 mt-2">
-                      <button className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700" onClick={handleSavePin}>Enregistrer</button>
-                      {pinEnabled && <button className="bg-slate-400 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
-                    </div>
-                    {pinError && <div className="text-red-600 text-xs mt-1">{pinError}</div>}
-                  </div>
-                )}
-              </div>
-
-              {/* Saisie du PIN si protection activée */}
+            <div className="max-w-4xl mx-auto space-y-8 relative">
+              {/* Overlay si PIN requis */}
               {pinCheckMode && pinEnabled && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-                  <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center">
-                    <h4 className="font-bold text-lg mb-2">Code PIN requis</h4>
-                    <input
-                      type="password"
-                      maxLength={4}
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
-                      placeholder="----"
-                      value={pinCheckInput}
-                      onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
-                      autoFocus
-                    />
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded mt-4 font-bold hover:bg-blue-700" onClick={handleCheckPin}>Valider</button>
-                    {pinCheckError && <div className="text-red-600 text-xs mt-2">{pinCheckError}</div>}
+                <div className="absolute inset-0 z-40 flex items-center justify-center">
+                  <div className="fixed inset-0 bg-white/90 backdrop-blur-xl z-40" />
+                  <div className="z-50 w-full flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center relative">
+                      <button
+                        className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                        aria-label="Fermer"
+                        onClick={() => {
+                          setPinCheckMode(false);
+                          setActiveTab('roles');
+                        }}
+                      >
+                        <X size={20} />
+                      </button>
+                      <h4 className="font-bold text-lg mb-2">Code PIN requis</h4>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                        placeholder="----"
+                        value={pinCheckInput}
+                        onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
+                        onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
+                        autoFocus
+                      />
+                      <button className="bg-blue-600 text-white px-4 py-2 rounded mt-4 font-bold hover:bg-blue-700" onClick={handleCheckPin}>Valider</button>
+                      {pinCheckError && <div className="text-red-600 text-xs mt-2">{pinCheckError}</div>}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Couleur principale */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <Palette className="text-slate-400" size={20} />
-                  Couleur Principale
-                </h3>
-                <p className="text-sm text-slate-500 mb-6">
-                  Choisissez la couleur principale de l'interface. Cette couleur sera utilisée pour les boutons, les titres et les éléments actifs.
-                </p>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {THEME_COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => handleSaveTheme(color)}
-                      className={`h-24 rounded-xl flex items-center justify-center transition-all hover:scale-105 shadow-sm border-2 ${currentTheme === color ? 'ring-2 ring-offset-2' : 'border-transparent hover:shadow-md'}`}
-                      style={{
-                        backgroundColor: color,
-                        borderColor: currentTheme === color ? color : 'transparent',
-                        outlineColor: color
-                      }}
-                    >
-                      {currentTheme === color && (
-                        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-                          <Check className="text-white drop-shadow-md" size={32} strokeWidth={3} />
-                        </div>
-                      )}
-                      <span className="absolute bottom-2 text-[10px] font-mono text-white/80 bg-black/20 px-1.5 rounded uppercase tracking-wider">
-                        {color}
-                      </span>
-                    </button>
-                  ))}
+              {/* Affichage du contenu SEULEMENT si le PIN est validé ou non activé */}
+              {(!pinEnabled || !pinCheckMode) && <>
+                {/* Gestion du code PIN pour l'accès à l'onglet Profil */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette className="text-slate-400" size={20} />
+                    Sécurité de l'onglet Profil
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Activez un code PIN à 4 chiffres pour protéger l'accès à cet onglet.
+                  </p>
+                  {pinEnabled && !pinEditMode && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-lg tracking-widest">PIN : ****</span>
+                        <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700" onClick={() => setPinEditMode(true)}>Modifier</button>
+                        <button className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600" onClick={handleDisablePin}>Désactiver</button>
+                      </div>
+                    </div>
+                  )}
+                  {(!pinEnabled || pinEditMode) && (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                        placeholder="----"
+                        value={pinInput}
+                        onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700" onClick={handleSavePin}>Enregistrer</button>
+                        {pinEnabled && <button className="bg-slate-400 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
+                      </div>
+                      {pinError && <div className="text-red-600 text-xs mt-1">{pinError}</div>}
+                    </div>
+                  )}
                 </div>
-              </div>
 
+                {/* Couleur principale */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette className="text-slate-400" size={20} />
+                    Couleur Principale
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-6">
+                    Choisissez la couleur principale de l'interface. Cette couleur sera utilisée pour les boutons, les titres et les éléments actifs.
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {THEME_COLORS.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => handleSaveTheme(color)}
+                        className={`h-24 rounded-xl flex items-center justify-center transition-all hover:scale-105 shadow-sm border-2 ${currentTheme === color ? 'ring-2 ring-offset-2' : 'border-transparent hover:shadow-md'}`}
+                        style={{
+                          backgroundColor: color,
+                          borderColor: currentTheme === color ? color : 'transparent',
+                          outlineColor: color
+                        }}
+                      >
+                        {currentTheme === color && (
+                          <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+                            <Check className="text-white drop-shadow-md" size={32} strokeWidth={3} />
+                          </div>
+                        )}
+                        <span className="absolute bottom-2 text-[10px] font-mono text-white/80 bg-black/20 px-1.5 rounded uppercase tracking-wider">
+                          {color}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>}
             </div>
           )}
 
