@@ -41,13 +41,6 @@ CREATE TABLE invoices_history (
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Only insert default settings if table is empty
-INSERT OR IGNORE INTO settings (id, name, street, zipCode, city, siret, vatNumber, phone, logo, primaryColor, rcs, ape, capital, headquarters) 
-VALUES (1, '', '', '', '', '', '', '', NULL, '#4f46e5', '', '', '', '');
-
--- Only insert default invoice if table is empty
-INSERT OR IGNORE INTO current_invoice (id, invoiceNumber, date, covers, client_companyName, client_address, description, amountHT10, amountHT20)
-VALUES (1, '', '', 1, '', '', '', 0, 0);
 
 DROP TABLE IF EXISTS prestations;
 CREATE TABLE prestations (
@@ -55,8 +48,3 @@ CREATE TABLE prestations (
   label TEXT NOT NULL
 );
 
-INSERT INTO prestations (label) VALUES 
-('Prestation de restauration'),
-('Service et consommation de restauration'),
-('Repas professionnels'),
-('Boissons et consommations');
