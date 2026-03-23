@@ -246,7 +246,19 @@ async function ensureAppKv(db: D1Database) {
         value TEXT NOT NULL,
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (tenant_id, key)
-      )
+      );
+    `)
+    .run();
+
+  // Table dédiée pour le code PIN de l'onglet Profil
+  await db
+    .prepare(`
+      CREATE TABLE IF NOT EXISTS profil_pin (
+        tenant_id TEXT NOT NULL DEFAULT 'default',
+        pin TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (tenant_id)
+      );
     `)
     .run();
 }
@@ -744,6 +756,28 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
 async function handleSettings(db: D1Database, req: Request, key?: string) {
   const settings = (await kvGetJSON<Record<string, any>>(db, "polpo_settings_global")) ?? {};
 
+  // Surcharge pour la clé 'profil_pin' : utilise la table SQL dédiée
+  if (key === 'profil_pin') {
+    if (req.method === 'GET') {
+      const res = await db.prepare('SELECT pin FROM profil_pin WHERE tenant_id = ?1 LIMIT 1').bind('default').all();
+      const pin = res.results?.[0]?.pin ?? null;
+      return json({ key, value: pin }, 200, req);
+    }
+    if (req.method === 'PUT') {
+      const body = await safeJson(req);
+      const pin = body?.value ?? null;
+      if (!/^[0-9]{4}$/.test(pin)) return json({ error: 'PIN invalide' }, 400, req);
+      await db.prepare('INSERT OR REPLACE INTO profil_pin (tenant_id, pin, updated_at) VALUES (?1, ?2, datetime(\'now\'))').bind('default', pin).run();
+      return json({ ok: true }, 200, req);
+    }
+    if (req.method === 'DELETE') {
+      await db.prepare('DELETE FROM profil_pin WHERE tenant_id = ?1').bind('default').run();
+      return json({ ok: true }, 200, req);
+    }
+    return json({ error: 'Method Not Allowed' }, 405, req);
+  }
+
+  // Comportement par défaut pour les autres settings
   if (req.method === "GET" && !key) {
     return json(settings, 200, req);
   }
