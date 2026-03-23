@@ -86,10 +86,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
   const [absEnd, setAbsEnd] = useState('');
 
 
+
+  // À chaque ouverture de la modale, forcer l'onglet sur 'roles' si PIN activé et non validé
   useEffect(() => {
     if (isOpen) {
       loadData();
       loadPin();
+      // Si PIN activé, on force l'onglet sur 'roles' (Gestion Postes) et on reset l'état PIN
+      if (pinEnabled) {
+        setActiveTab('roles');
+        setPinCheckMode(false);
+        setPinCheckInput('');
+        setPinCheckError('');
+      }
     }
   }, [isOpen]);
 
