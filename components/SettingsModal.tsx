@@ -533,9 +533,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
           {activeTab === 'theme' && (
             <div className="max-w-4xl mx-auto space-y-8 relative">
               {/* Overlay si PIN requis (floute uniquement le contenu de la modale) */}
+
               {pinCheckMode && pinEnabled && (
                 <>
-                  <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl flex items-center justify-center" />
+                  {/* Overlay flou sur le contenu, mais garde la hauteur */}
+                  <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl pointer-events-none" />
+                  {/* Modale PIN centrée, en flex, sans compresser le parent */}
                   <div className="absolute inset-0 z-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-80 flex flex-col items-center relative">
                       <button
