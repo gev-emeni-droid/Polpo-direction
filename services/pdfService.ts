@@ -106,8 +106,8 @@ const generateDayPDF = (planning: Planning, templates: Template[], options: Expo
         );
 
         allServiceRows.sort((a, b) => {
-            const roleIndexA = getRoleIndex(a.employeeRole);
-            const roleIndexB = getRoleIndex(b.employeeRole);
+            const roleIndexA = options.roles.indexOf(a.employeeRole);
+            const roleIndexB = options.roles.indexOf(b.employeeRole);
             if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
             return a.employeeName.localeCompare(b.employeeName);
         });
@@ -488,8 +488,8 @@ export const generatePlanningPDF = (planning: Planning, templates: Template[], o
 
     const bodyData: any[] = [];
     const sortedRows = [...planning.rows].sort((a, b) => {
-        const roleIndexA = getRoleIndex(a.employeeRole);
-        const roleIndexB = getRoleIndex(b.employeeRole);
+        const roleIndexA = options.roles.indexOf(a.employeeRole);
+        const roleIndexB = options.roles.indexOf(b.employeeRole);
         if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
         return a.employeeName.localeCompare(b.employeeName);
     });
