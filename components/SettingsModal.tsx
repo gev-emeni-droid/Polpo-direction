@@ -492,7 +492,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70]">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden" style={{ width: '800px', height: '480px', minWidth: '800px', minHeight: '480px', maxWidth: '800px', maxHeight: '480px' }}>
         {/* Header */}
         <div className="p-4 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h2 className="text-xl font-bold text-slate-800">Paramètres</h2>
@@ -536,7 +536,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50" style={{ width: '800px', height: '480px', minWidth: '800px', minHeight: '480px', maxWidth: '800px', maxHeight: '480px' }}>
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
 
           {/* --- TAB:THEME --- */}
           {activeTab === 'theme' && (
