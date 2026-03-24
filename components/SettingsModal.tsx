@@ -1107,16 +1107,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                 <p className="text-sm text-slate-500">Configurez la semaine type de vos employés. Ces réglages seront utilisés pour tout nouveau planning.</p>
 
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-2">
-                  {STANDARD_ROLES.map(roleId => (
+                  {roles.map(r => (
                     <button
-                      key={roleId}
-                      onClick={() => setSelectedRole(roleId)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${selectedRole === roleId
+                      key={r.id}
+                      onClick={() => setSelectedRole(r.id)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${selectedRole === r.id
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md'
                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                         } `}
                     >
-                      {roleId}
+                      {r.label}
                     </button>
                   ))}
                 </div>

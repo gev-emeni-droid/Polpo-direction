@@ -52,7 +52,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
       const loadRoles = async () => {
         const roles = await getRoles();
         setAvailableRoles(roles);
-        setSelectedRoles(roles.map(r => r.id)); // Default select all
+        // Charger la sélection/ordre depuis le localStorage
+        const saved = localStorage.getItem('export_selected_roles');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Ne garder que les rôles encore existants
+          const filtered = parsed.filter((id: string) => roles.some(r => r.id === id));
+          setSelectedRoles(filtered);
+        } else {
+          setSelectedRoles(roles.map(r => r.id)); // Par défaut, tout cocher
+        }
       };
       loadRoles();
       // Default to first day if available and not set
@@ -60,12 +69,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
     }
   }, [isOpen, weekDates]);
 
+  // Ajoute ou retire un rôle en respectant l'ordre de sélection
   const toggleRole = (roleId: string) => {
+    let newSelected: string[];
     if (selectedRoles.includes(roleId)) {
-      setSelectedRoles(selectedRoles.filter(r => r !== roleId));
+      newSelected = selectedRoles.filter(r => r !== roleId);
     } else {
-      setSelectedRoles([...selectedRoles, roleId]);
+      newSelected = [...selectedRoles, roleId];
     }
+    setSelectedRoles(newSelected);
+    localStorage.setItem('export_selected_roles', JSON.stringify(newSelected));
   };
 
   const handleConfirm = () => {
@@ -210,18 +223,28 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
             <div className="flex justify-between items-end mb-3">
               <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Postes à inclure</h3>
               <div className="flex gap-2">
-                <button onClick={() => setSelectedRoles(availableRoles.map(r => r.id))} className="text-[10px] text-blue-600 font-bold hover:underline">Tout cocher</button>
-                <button onClick={() => setSelectedRoles([])} className="text-[10px] text-slate-400 font-bold hover:underline">Tout décocher</button>
+                <button onClick={() => {
+                  const all = availableRoles.map(r => r.id);
+                  setSelectedRoles(all);
+                  localStorage.setItem('export_selected_roles', JSON.stringify(all));
+                }} className="text-[10px] text-blue-600 font-bold hover:underline">Tout cocher</button>
+                <button onClick={() => {
+                  setSelectedRoles([]);
+                  localStorage.setItem('export_selected_roles', JSON.stringify([]));
+                }} className="text-[10px] text-slate-400 font-bold hover:underline">Tout décocher</button>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
               {availableRoles.map(role => {
                 const isChecked = selectedRoles.includes(role.id);
+                const order = selectedRoles.indexOf(role.id);
                 return (
                   <label key={role.id} className="flex items-center gap-2 p-2 rounded border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors select-none">
                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isChecked ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
-                      {isChecked && <CheckSquare size={12} className="text-white" />}
+                      {isChecked ? (
+                        <span className="text-xs font-bold text-white">{order + 1}</span>
+                      ) : null}
                     </div>
                     <input
                       type="checkbox"
