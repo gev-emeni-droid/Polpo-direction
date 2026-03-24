@@ -141,10 +141,10 @@ const PlanningView: React.FC = () => {
             }
           });
 
-          // Sort rows to match PDF order
+          // Trier les rows selon l'ordre personnalisé des rôles
           newRows.sort((a, b) => {
-            const roleIndexA = getRoleIndex(a.employeeRole);
-            const roleIndexB = getRoleIndex(b.employeeRole);
+            const roleIndexA = roles.findIndex(r => r.id === a.employeeRole);
+            const roleIndexB = roles.findIndex(r => r.id === b.employeeRole);
             if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
             return a.employeeName.localeCompare(b.employeeName);
           });
@@ -589,16 +589,8 @@ const PlanningView: React.FC = () => {
     // Sort groups by dynamic roles list, but respecting ROLE_ORDER preferences
     const sortedGroups: Record<string, PlanningRow[]> = {};
 
-    // Sort the available roles
-    const sortedRoles = [...roles].sort((a, b) => {
-      const indexA = getRoleIndex(a.id);
-      const indexB = getRoleIndex(b.id);
-      if (indexA !== indexB) return indexA - indexB; // Sort by predefined order
-      return a.label.localeCompare(b.label); // Secondary: Alphabetical
-    });
-
-    // 1. Iterate over SORTED roles
-    sortedRoles.forEach(role => {
+    // Utiliser l'ordre du tableau roles (déjà personnalisé)
+    roles.forEach(role => {
       sortedGroups[role.id] = groups[role.id] || [];
     });
 
