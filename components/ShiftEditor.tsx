@@ -7,8 +7,8 @@ interface ShiftEditorProps {
     shift: Shift;
     employeeName: string;
     employeeRoleId: string;
-    onSave: (updated: Shift) => Promise<void>;
-    onBatchSave?: (dates: string[], shift: Shift) => Promise<void>;
+    onSave: (updated: Shift) => void;
+    onBatchSave?: (dates: string[], shift: Shift) => void;
     onClose: () => void;
     position: { x: number, y: number };
     currentDate: string;
@@ -89,7 +89,7 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
         setSegments(newSegs);
     };
 
-    const handleSave = async () => {
+    const handleSave = () => {
         let finalSegments = [...segments];
         let type: 'travail' | 'repos' | 'absence' = 'travail';
         let serviceType: ShiftServiceType = 'none';
@@ -103,17 +103,13 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
         else if (hasMidi) serviceType = 'midi';
         else if (hasSoir) serviceType = 'soir';
 
-        try {
-            await onSave({
-                ...shift,
-                type,
-                serviceType,
-                segments: finalSegments
-            });
-            onClose();
-        } catch (err) {
-            console.error('Failed to save shift:', err);
-        }
+        onSave({
+            ...shift,
+            type,
+            serviceType,
+            segments: finalSegments
+        });
+        onClose()
     };
 
     const style: React.CSSProperties = {

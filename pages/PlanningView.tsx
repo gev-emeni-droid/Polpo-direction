@@ -183,7 +183,7 @@ const PlanningView: React.FC = () => {
     }
   };
 
-  const handleShiftUpdate = async (updatedShift: Shift) => {
+  const handleShiftUpdate = (updatedShift: Shift) => {
     if (!planning || !editingShift) return;
     const newRows = planning.rows.map(row => {
       if (row.employeeId === editingShift.employeeId) {
@@ -197,12 +197,10 @@ const PlanningView: React.FC = () => {
       }
       return row;
     });
-    await savePlanning({ ...planning, rows: newRows });
-    // Reload planning to ensure modal shows updated values
-    await loadPlanningData();
+    savePlanning({ ...planning, rows: newRows });
   };
 
-  const handleBatchShiftUpdate = async (dates: string[], shift: Shift) => {
+  const handleBatchShiftUpdate = (dates: string[], shift: Shift) => {
     if (!planning || !editingShift) return;
     const newRows = planning.rows.map(row => {
       if (row.employeeId === editingShift.employeeId) {
@@ -214,9 +212,7 @@ const PlanningView: React.FC = () => {
       }
       return row;
     });
-    await savePlanning({ ...planning, rows: newRows });
-    // Reload planning to ensure modal shows updated values
-    await loadPlanningData();
+    savePlanning({ ...planning, rows: newRows });
   };
 
   const handleAddShiftData = (data: {
