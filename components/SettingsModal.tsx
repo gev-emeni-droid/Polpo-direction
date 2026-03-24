@@ -549,7 +549,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                   <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl" style={{ pointerEvents: 'auto' }} />
                   {/* Overlay PIN centré, occupe tout l'espace du contenu, pour garder la même taille que les autres onglets */}
                   <div className="absolute inset-0 z-50 flex items-center justify-center">
-                    <div className="w-full max-w-2xl flex flex-col items-center justify-center relative" style={{ minHeight: '340px' }}>
+                    <div className="w-full h-full flex flex-col items-center justify-center relative">
                       <button
                         className="absolute top-6 right-8 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
                         aria-label="Fermer"
@@ -560,8 +560,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       >
                         <X size={24} />
                       </button>
-                      <div className="flex flex-col items-center justify-center w-full">
-                        <h4 className="font-bold text-xl mb-6 mt-8">Code PIN requis</h4>
+                      <div className="flex flex-col items-center justify-center w-full h-full" style={{ justifyContent: 'center', flex: 1 }}>
+                        <h4 className="font-bold text-xl mb-6">Code PIN requis</h4>
                         <input
                           type="password"
                           maxLength={4}
