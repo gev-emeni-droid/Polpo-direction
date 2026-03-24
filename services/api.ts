@@ -269,6 +269,18 @@ export async function deleteRole(id: string) {
   }
 }
 
+export async function saveRolesOrder(roles: { id: string; label: string }[]) {
+  try {
+    return await fetchJson('/api/roles/order', {
+      method: 'POST',
+      body: JSON.stringify({ roles }),
+    });
+  } catch (error) {
+    console.error('Failed to save roles order:', error);
+    throw error;
+  }
+}
+
 // ==================== LONG ABSENCES ====================
 
 export async function listLongAbsences() {

@@ -187,6 +187,10 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     if (resource === "roles") {
+      // Special handler for saving roles order (drag & drop)
+      if (id === "order" && request.method === "POST") {
+        return await handleRolesOrder(db, request);
+      }
       return await handleRoles(db, request, id);
     }
 
@@ -640,6 +644,33 @@ async function handleObjectCollection(
   }
 
   return json({ error: "Method Not Allowed" }, 405, corsReq);
+}
+
+async function handleRolesOrder(db: D1Database, req: Request) {
+  try {
+    const body = await safeJson(req);
+    const roles = body?.roles;
+
+    if (!Array.isArray(roles)) {
+      return json({ error: "roles must be an array" }, 400, req);
+    }
+
+    // Validate that all roles have id and label
+    for (const role of roles) {
+      if (!role.id || !role.label) {
+        return json({ error: "each role must have id and label" }, 400, req);
+      }
+    }
+
+    // Save the roles in the new order
+    await kvSetJSON(db, "polpo_roles", roles);
+
+    return json({ ok: true, count: roles.length }, 200, req);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[handleRolesOrder Error]", msg, error);
+    return json({ error: "Failed to save roles order", details: msg }, 500, req);
+  }
 }
 
 async function handleRoles(db: D1Database, req: Request, id?: string) {

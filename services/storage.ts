@@ -19,6 +19,7 @@ export const getRoles = async () => {
 
   // Collect all roles actually used by employees and templates
   const usedRoles = new Set<string>();
+  const restoredRoles: { id: string, label: string }[] = [];
 
   try {
     const employees = await api.listEmployees();
@@ -31,6 +32,7 @@ export const getRoles = async () => {
             const newRole = { id: emp.role, label: emp.role };
             await api.saveRole(newRole);
             rolesMap.set(emp.role, newRole);
+            restoredRoles.push(newRole);
           }
         }
       }
@@ -46,6 +48,7 @@ export const getRoles = async () => {
             const newRole = { id: tpl.role, label: tpl.role };
             await api.saveRole(newRole);
             rolesMap.set(tpl.role, newRole);
+            restoredRoles.push(newRole);
           }
         }
       }
@@ -54,29 +57,22 @@ export const getRoles = async () => {
     console.error('Failed to sync roles from employees/templates:', err);
   }
 
-  // Filter return values one last time to be safe
-  // Filter return values:
-  // 1. Keep if it exists in the active DB list (roles)
-  // 2. Otherwise (restored), keep only if NOT blacklisted
-  return Array.from(rolesMap.values()).filter(r => {
-    // Active in DB? Keep it.
-    if (roles.some(dbR => dbR.id === r.id)) return true;
-    // Restored? Check blacklist.
-    return !blacklistSet.has(r.id);
-  });
+  // IMPORTANT: Keep the order from the backend (returned by api.listRoles())
+  // Only add restored roles at the end (don't reorder existing ones)
+  const activeRoles = roles.filter(r => rolesMap.has(r.id) && !blacklistSet.has(r.id));
+  const newRestoredRoles = restoredRoles.filter(r => !blacklistSet.has(r.id));
+  
+  return [...activeRoles, ...newRestoredRoles];
 };
 
 export const saveRoles = async (roles: { id: string, label: string }[]) => {
-  // The current UI might send the whole list, but our API is likely item-based or we need to adapt.
-  // If the UI expects to save the whole list, we should probably check what changed.
-  // However, looking at the previous implementation, it just overwrote the key.
-  // Since we don't have a bulk save endpoint in the visible API, we might need to iterate.
-  // BUT, `saveRole` in api.ts saves a single role.
-  // If the usage of `saveRoles` is just to update the list, we might need to be careful.
-  // Let's assume for now we iterate and save each.
-  // Optimization: In a real app we'd want a bulk endpoint.
-  for (const role of roles) {
-    await api.saveRole(role);
+  // IMPORTANT: To preserve the drag & drop order,
+  // we save the entire list as a single operation
+  try {
+    await api.saveRolesOrder(roles);
+  } catch (err) {
+    console.error('Failed to save roles order:', err);
+    throw err;
   }
 };
 
