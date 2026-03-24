@@ -536,7 +536,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50" style={{ width: '800px', height: '480px', minWidth: '800px', minHeight: '480px', maxWidth: '800px', maxHeight: '480px' }}>
 
           {/* --- TAB:THEME --- */}
           {activeTab === 'theme' && (
