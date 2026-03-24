@@ -198,6 +198,8 @@ const PlanningView: React.FC = () => {
       return row;
     });
     await savePlanning({ ...planning, rows: newRows });
+    // Reload planning to ensure modal shows updated values
+    await loadPlanningData();
   };
 
   const handleBatchShiftUpdate = async (dates: string[], shift: Shift) => {
@@ -213,6 +215,8 @@ const PlanningView: React.FC = () => {
       return row;
     });
     await savePlanning({ ...planning, rows: newRows });
+    // Reload planning to ensure modal shows updated values
+    await loadPlanningData();
   };
 
   const handleAddShiftData = (data: {
