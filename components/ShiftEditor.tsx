@@ -20,7 +20,6 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
 
     // Manage segments locally
     const [segments, setSegments] = useState<ShiftSegment[]>([]);
-    const [globalNote, setGlobalNote] = useState<string>('');
 
     // Initialize state from shift
     useEffect(() => {
@@ -28,7 +27,6 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
             setSegments(shift.segments);
             const firstSeg = shift.segments[0];
             if (firstSeg.templateId) setSelectedTemplateId(firstSeg.templateId);
-            if (firstSeg.note) setGlobalNote(firstSeg.note);
         } else {
             // Default state
             setSegments([{ type: 'horaire', start: '10:00', end: '15:00' }]);
@@ -61,7 +59,7 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                     templateId: tpl.id,
                     hasOverride: false,
                     colorOverride: tpl.color,
-                    note: globalNote // Preserve note
+                    note: ''  // Start with empty notes
                 }));
                 setSegments(newSegs);
             }
@@ -69,7 +67,8 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
     }, [selectedTemplateId, availableTemplates]);
 
     const handleAddSegment = () => {
-        setSegments([...segments, { type: 'horaire', start: '18:00', end: '23:00', note: globalNote }]);
+        // By default, add evening segment
+        setSegments([...segments, { type: 'horaire', start: '18:00', end: '23:00', note: '' }]);
     };
 
     const handleRemoveSegment = (index: number) => {
@@ -89,10 +88,7 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
         let type: 'travail' | 'repos' | 'absence' = 'travail';
         let serviceType: ShiftServiceType = 'none';
 
-        // Apply global note to all segments
-        if (finalSegments.length > 0) {
-            finalSegments = finalSegments.map(s => ({ ...s, note: globalNote }));
-        }
+        // Notes are already part of each segment, no global note to apply
 
         // Determine service type
         const hasMidi = finalSegments.some(s => s.start && s.start < "16:00");
@@ -159,24 +155,6 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                         </div>
                     </div>
 
-                    {/* Note Input */}
-                    <div>
-                        <label className="text-[11px] font-bold text-slate-500 uppercase mb-1.5 block tracking-wide">Note (Optionnelle)</label>
-                        <div className="relative">
-                            <select
-                                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white hover:border-slate-300 focus:ring-1 focus:ring-blue-500 outline-none text-slate-700 transition-colors appearance-none"
-                                value={globalNote}
-                                onChange={(e) => setGlobalNote(e.target.value)}
-                            >
-                                <option value="">Sélectionner...</option>
-                                <option value="Hôtesse">Hôtesse</option>
-                                <option value="Polpo Nord">Polpo Nord</option>
-                                <option value="Polpo Plage">Polpo Plage</option>
-                            </select>
-                            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
-                    </div>
-
                     {/* Segment Editor Box */}
                     <div className="border border-slate-200 rounded-lg p-3 space-y-3 relative group">
                         <div className="space-y-3">
@@ -207,6 +185,17 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                                             />
                                             <Clock size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         </div>
+                                    </div>
+
+                                    {/* Note Input for this segment */}
+                                    <div className="mb-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Note (ex: Coupure)..."
+                                            className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none text-slate-700"
+                                            value={seg.note || ''}
+                                            onChange={e => updateSegment(idx, 'note', e.target.value || undefined)}
+                                        />
                                     </div>
 
                                     {/* Coupure/Absence Dropdown */}
