@@ -710,8 +710,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                                   ...existing code...
                                 </div>
                               )}
-                                </div>
-                              </ReactSortable>
 
           {/* --- TAB:EMPLOYEES --- */}
           {activeTab === 'employees' && (
