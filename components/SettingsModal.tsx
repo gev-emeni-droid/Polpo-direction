@@ -1,4 +1,3 @@
-import { ReactSortable } from 'react-sortablejs';
 import React, { useState, useEffect } from 'react';
 import * as api from '../services/api';
 import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw, CalendarDays, Palette, Search } from 'lucide-react';
@@ -538,126 +537,135 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-          {/* PIN Overlay if needed and tab is theme */}
-          {pinCheckMode && pinEnabled && activeTab === 'theme' && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-              <div className="w-full h-full flex flex-col items-center justify-center relative bg-white/80 backdrop-blur-xl">
-                <button
-                  className="absolute top-6 right-8 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
-                  aria-label="Fermer"
-                  onClick={() => {
-                    setPinCheckMode(false);
-                    setActiveTab('roles');
-                  }}
-                >
-                  <X size={24} />
-                </button>
-                <div className="flex flex-col items-center justify-center">
-                  <h4 className="font-bold text-xl mb-6">Code PIN requis</h4>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    className="border rounded px-5 py-3 w-40 text-center font-mono text-2xl tracking-widest mb-6 shadow-sm"
-                    placeholder="----"
-                    value={pinCheckInput}
-                    onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
-                    onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
-                    autoFocus
-                  />
-                  <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-base hover:bg-blue-700 transition-all" onClick={handleCheckPin}>Valider</button>
-                  {pinCheckError && <div className="text-red-600 text-sm mt-4">{pinCheckError}</div>}
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* --- TAB:THEME (PROFIL) --- */}
-          {activeTab === 'theme' && (!pinEnabled || !pinCheckMode) && (
-            <div className="max-w-4xl mx-auto space-y-8">
-              {/* Gestion du code PIN pour l'accès à l'onglet Profil */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <Palette className="text-slate-400" size={20} />
-                  Sécurité de l'onglet Profil
-                </h3>
-                <p className="text-sm text-slate-500 mb-4">
-                  Activez un code PIN à 4 chiffres pour protéger l'accès à cet onglet.
-                </p>
-                {pinEnabled && !pinEditMode && (
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-sm font-mono text-slate-700 bg-slate-100 px-3 py-2 rounded inline-block">Code PIN activé ••••</p>
-                    </div>
-                    <button
-                      onClick={() => setPinEditMode(true)}
-                      className="text-blue-600 hover:text-blue-700 font-bold text-sm"
-                    >
-                      Modifier
-                    </button>
-                    <button
-                      onClick={handleDisablePin}
-                      className="text-red-600 hover:text-red-700 font-bold text-sm"
-                    >
-                      Désactiver
-                    </button>
-                  </div>
-                )}
-                {(!pinEnabled || pinEditMode) && (
-                  <div className="space-y-3">
-                    <input
-                      type="password"
-                      maxLength={4}
-                      pattern="[0-9]*"
-                      inputMode="numeric"
-                      placeholder="Entrez 4 chiffres"
-                      value={pinInput}
-                      onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="border rounded px-3 py-2 w-40 text-center font-mono text-xl tracking-widest"
-                    />
-                    <div className="flex gap-2">
+          {/* --- TAB:THEME --- */}
+          {activeTab === 'theme' && (
+            <div className="max-w-4xl mx-auto space-y-8 relative">
+              {/* Overlay si PIN requis (floute uniquement le contenu de la modale) */}
+
+              {pinCheckMode && pinEnabled && (
+                <>
+                  {/* Overlay flou sur le contenu, mais garde la hauteur */}
+                  <div className="absolute inset-0 z-40 bg-white/80 backdrop-blur-xl" style={{ pointerEvents: 'auto' }} />
+                  {/* Overlay PIN centré, occupe tout l'espace du contenu, pour garder la même taille que les autres onglets */}
+                  <div className="absolute inset-0 z-50 flex items-center justify-center">
+                    <div className="w-full h-full flex flex-col items-center justify-center relative">
                       <button
-                        onClick={handleSavePin}
-                        className="bg-green-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-green-700"
+                        className="absolute top-6 right-8 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                        aria-label="Fermer"
+                        onClick={() => {
+                          setPinCheckMode(false);
+                          setActiveTab('roles');
+                        }}
                       >
-                        Valider
+                        <X size={24} />
                       </button>
-                      {pinEditMode && (
-                        <button
-                          onClick={() => { setPinEditMode(false); setPinInput(''); setPinError(''); }}
-                          className="bg-slate-400 text-white px-4 py-2 rounded font-bold text-sm hover:bg-slate-500"
-                        >
-                          Annuler
-                        </button>
-                      )}
+                      <div className="flex flex-col items-center justify-center w-full h-full" style={{ justifyContent: 'center', flex: 1 }}>
+                        <h4 className="font-bold text-xl mb-6">Code PIN requis</h4>
+                        <input
+                          type="password"
+                          maxLength={4}
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                          className="border rounded px-5 py-3 w-40 text-center font-mono text-2xl tracking-widest mb-6 shadow-sm"
+                          placeholder="----"
+                          value={pinCheckInput}
+                          onChange={e => setPinCheckInput(e.target.value.replace(/[^0-9]/g, ''))}
+                          onKeyDown={e => { if (e.key === 'Enter') handleCheckPin(); }}
+                          autoFocus
+                        />
+                        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-base hover:bg-blue-700 transition-all" onClick={handleCheckPin}>Valider</button>
+                        {pinCheckError && <div className="text-red-600 text-sm mt-4">{pinCheckError}</div>}
+                      </div>
                     </div>
-                    {pinError && <div className="text-red-600 text-sm">{pinError}</div>}
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
-              {/* Thème Colors */}
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-4">Couleur du Thème</h3>
-                <div className="flex flex-wrap gap-3">
-                  {THEME_COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => handleSaveTheme(color)}
-                      className={`w-12 h-12 rounded-lg shadow transition-transform hover:scale-110 border-2 ${currentTheme === color ? 'border-slate-800' : 'border-transparent'}`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+              {/* Affichage du contenu SEULEMENT si le PIN est validé ou non activé */}
+              {(!pinEnabled || !pinCheckMode) && <>
+                {/* Gestion du code PIN pour l'accès à l'onglet Profil */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette className="text-slate-400" size={20} />
+                    Sécurité de l'onglet Profil
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Activez un code PIN à 4 chiffres pour protéger l'accès à cet onglet.
+                  </p>
+                  {pinEnabled && !pinEditMode && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-lg tracking-widest">PIN : ****</span>
+                        <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700" onClick={() => setPinEditMode(true)}>Modifier</button>
+                        <button className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600" onClick={handleDisablePin}>Désactiver</button>
+                      </div>
+                    </div>
+                  )}
+                  {(!pinEnabled || pinEditMode) && (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        className="border rounded px-3 py-2 w-32 text-center font-mono text-lg tracking-widest"
+                        placeholder="----"
+                        value={pinInput}
+                        onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700" onClick={handleSavePin}>Enregistrer</button>
+                        {pinEnabled && <button className="bg-slate-400 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
+                      </div>
+                      {pinError && <div className="text-red-600 text-xs mt-1">{pinError}</div>}
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Couleur principale */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette className="text-slate-400" size={20} />
+                    Couleur Principale
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-6">
+                    Choisissez la couleur principale de l'interface. Cette couleur sera utilisée pour les boutons, les titres et les éléments actifs.
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {THEME_COLORS.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => handleSaveTheme(color)}
+                        className={`h-24 rounded-xl flex items-center justify-center transition-all hover:scale-105 shadow-sm border-2 ${currentTheme === color ? 'ring-2 ring-offset-2' : 'border-transparent hover:shadow-md'}`}
+                        style={{
+                          backgroundColor: color,
+                          borderColor: currentTheme === color ? color : 'transparent',
+                          outlineColor: color
+                        }}
+                      >
+                        {currentTheme === color && (
+                          <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+                            <Check className="text-white drop-shadow-md" size={32} strokeWidth={3} />
+                          </div>
+                        )}
+                        <span className="absolute bottom-2 text-[10px] font-mono text-white/80 bg-black/20 px-1.5 rounded uppercase tracking-wider">
+                          {color}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>}
             </div>
           )}
 
           {/* --- TAB:ROLES --- */}
           {activeTab === 'roles' && (
-            <div className="space-y-6 max-w-4xl mx-auto">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div className="max-w-3xl mx-auto space-y-6">
+              {/* List Roles */}
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-100 text-slate-600 border-b">
                     <tr>
@@ -665,29 +673,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <ReactSortable
-                    tag="tbody"
-                    list={roles}
-                    setList={async (newRoles) => {
-                      setRoles(newRoles);
-                      await api.saveRoles(newRoles);
-                    }}
-                    animation={200}
-                    handle=".drag-handle"
-                  >
+                  <tbody>
                     {roles.map(r => (
-                      <tr key={r.id} className="border-b last:border-0 hover:bg-slate-50 cursor-move">
-                        <td className="p-3 flex items-center gap-2">
-                          <span className="drag-handle cursor-grab text-slate-400 hover:text-blue-500">
-                            <svg width={16} height={16} fill="none" viewBox="0 0 16 16">
-                              <circle cx={4} cy={4} r={1.5} fill="currentColor" />
-                              <circle cx={4} cy={8} r={1.5} fill="currentColor" />
-                              <circle cx={4} cy={12} r={1.5} fill="currentColor" />
-                              <circle cx={8} cy={4} r={1.5} fill="currentColor" />
-                              <circle cx={8} cy={8} r={1.5} fill="currentColor" />
-                              <circle cx={8} cy={12} r={1.5} fill="currentColor" />
-                            </svg>
-                          </span>
+                      <tr key={r.id} className="border-b last:border-0 hover:bg-slate-50">
+                        <td className="p-3">
                           {editingRoleId === r.id ? (
                             <div className="flex items-center gap-2">
                               <input
@@ -708,6 +697,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                         </td>
                       </tr>
                     ))}
+                    {/* Add Role Row */}
                     <tr className="bg-blue-50/30">
                       <td className="p-3">
                         <input
@@ -727,9 +717,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                         </button>
                       </td>
                     </tr>
-                  </ReactSortable>
+                  </tbody>
                 </table>
               </div>
+
+              {/* Delete Confirmation Modal */}
+              {deleteRoleConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+                  <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+                    <h4 className="font-bold text-lg mb-2">Suppression impossible</h4>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Ce poste est utilisé par <strong>{deleteRoleConfirm.count}</strong> éléments.
+                      Veuillez réassigner ces éléments avant de supprimer.
+                    </p>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Remplacer par :</label>
+                    <select
+                      className="w-full border rounded p-2 mb-4"
+                      value={reassignRoleId}
+                      onChange={e => setReassignRoleId(e.target.value)}
+                    >
+                      {roles.filter(r => r.id !== deleteRoleConfirm.id).map(r => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setDeleteRoleConfirm(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Annuler</button>
+                      <button onClick={confirmDeleteRole} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Confirmer et Supprimer</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -771,6 +788,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
               </div>
 
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                {/* Search Bar */}
                 <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                   <Search className="text-slate-400" size={16} />
                   <input
@@ -781,6 +799,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                     onChange={e => setEmployeeSearch(e.target.value)}
                   />
                 </div>
+
                 <table className="w-full text-sm text-left">
                   <thead className="bg-slate-100 text-slate-600 border-b">
                     <tr>
@@ -790,16 +809,67 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                     </tr>
                   </thead>
                   <tbody>
-                    {employees.filter(e => e.name.toLowerCase().includes(employeeSearch.toLowerCase())).map(emp => (
-                      <tr key={emp.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="p-3 font-medium text-slate-900">{emp.name}</td>
-                        <td className="p-3 text-slate-600">{roles.find(r => r.id === emp.role)?.label || emp.role}</td>
-                        <td className="p-3 text-right flex justify-end gap-2">
-                          <button onClick={() => handleEditEmployeeStart(emp)} className="text-blue-500 hover:bg-blue-100 p-1 rounded"><Edit2 size={16} /></button>
-                          <button onClick={() => handleDeleteEmployee(emp.id)} className="text-red-500 hover:bg-red-100 p-1 rounded"><Trash2 size={16} /></button>
-                        </td>
-                      </tr>
-                    ))}
+                    {employees
+                      .filter(emp => {
+                        const search = employeeSearch.toLowerCase();
+                        const rLabel = roles.find(r => r.id === emp.role)?.label || emp.role;
+                        return emp.name.toLowerCase().includes(search) || rLabel.toLowerCase().includes(search);
+                      })
+                      .map(emp => {
+                        const rLabel = roles.find(r => r.id === emp.role)?.label || emp.role;
+                        const isEditing = editingEmpId === emp.id;
+
+                        return (
+                          <tr key={emp.id} className={`border-b hover:bg-slate-50 last:border-0 ${isEditing ? 'bg-blue-50' : ''} `}>
+                            <td className="p-3 font-medium text-slate-800">
+                              {isEditing ? (
+                                <input
+                                  value={editEmpName}
+                                  onChange={e => setEditEmpName(e.target.value)}
+                                  className="w-full border border-blue-300 rounded px-2 py-1 text-sm"
+                                  autoFocus
+                                />
+                              ) : (
+                                emp.name
+                              )}
+                            </td>
+                            <td className="p-3 text-slate-600">
+                              {isEditing ? (
+                                <select
+                                  value={editEmpRole}
+                                  onChange={e => setEditEmpRole(e.target.value)}
+                                  className="w-full border border-blue-300 rounded px-2 py-1 text-sm bg-white"
+                                >
+                                  {roles.map(r => (
+                                    <option key={r.id} value={r.id}>{r.label}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-semibold">{rLabel}</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right flex justify-end gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button onClick={handleEditEmployeeSave} className="text-green-600 hover:bg-green-100 p-1.5 rounded" title="Enregistrer"><Check size={16} /></button>
+                                  <button onClick={() => setEditingEmpId(null)} className="text-slate-400 hover:bg-slate-100 p-1.5 rounded" title="Annuler"><X size={16} /></button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => handleEditEmployeeStart(emp)} className="text-slate-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded transition-colors" title="Modifier"><Edit2 size={16} /></button>
+                                  <button
+                                    onClick={() => handleDeleteEmployee(emp.id)}
+                                    className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -811,13 +881,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
             <div className="space-y-6 h-full flex flex-col">
               <div className="flex flex-col gap-2 mb-2">
                 <h3 className="text-lg font-bold text-slate-800">Modèles Horaires par Poste</h3>
+
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-2">
                   <button
                     onClick={() => { setSelectedRole('GÉNÉRAL'); resetTemplateForm(); }}
                     className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${selectedRole === 'GÉNÉRAL'
                       ? 'bg-slate-800 text-white border-slate-800 shadow-md'
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                    }`}
+                      } `}
                   >
                     GÉNÉRAL
                   </button>
@@ -828,7 +899,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${selectedRole === role.id
                         ? 'bg-slate-800 text-white border-slate-800 shadow-md'
                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                      }`}
+                        } `}
                     >
                       {role.label}
                     </button>
@@ -837,26 +908,53 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
               </div>
 
               <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+                {/* Left Col:Existing Templates */}
                 <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col overflow-hidden">
                   <div className="p-4 bg-slate-50 border-b font-semibold text-slate-700 flex justify-between items-center">
                     <span>MODÈLES EXISTANTS ({selectedRole === 'GÉNÉRAL' ? 'GÉNÉRAL' : roles.find(r => r.id === selectedRole)?.label})</span>
-                    <span className="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">{visibleTemplates.length}</span>
+                    <span className="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600 self-center">{visibleTemplates.length}</span>
                   </div>
                   <div className="p-4 overflow-y-auto flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
                     {visibleTemplates.length === 0 ? (
                       <div className="col-span-full py-10 text-center text-slate-400 italic">
-                        Aucun modèle défini.
+                        Aucun modèle défini pour {selectedRole === 'GÉNÉRAL' ? 'GÉNÉRAL' : roles.find(r => r.id === selectedRole)?.label}.
                       </div>
                     ) : (
                       visibleTemplates.map(t => (
-                        <div key={t.id} className={`border rounded-lg p-3 relative group transition-all ${editingTplId === t.id ? 'ring-2 ring-blue-500 border-transparent shadow-md bg-blue-50' : 'border-slate-200 hover:shadow-md bg-white'}`}>
+                        <div
+                          key={t.id}
+                          className={`border rounded-lg p-3 relative group transition-all ${editingTplId === t.id ? 'ring-2 ring-blue-500 border-transparent shadow-md bg-blue-50' : 'border-slate-200 hover:shadow-md bg-white'} `}
+                        >
+                          {/* Buttons */}
                           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEditTemplateStart(t)} className="text-blue-500 hover:bg-blue-100 p-1.5 rounded bg-white shadow-sm"><Edit2 size={14} /></button>
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:bg-red-100 p-1.5 rounded bg-white shadow-sm"><Trash2 size={14} /></button>
+                            <button
+                              onClick={() => handleEditTemplateStart(t)}
+                              className="text-blue-500 hover:bg-blue-100 p-1.5 rounded bg-white shadow-sm"
+                              title="Modifier"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTemplate(t.id)}
+                              className="text-red-500 hover:bg-red-100 p-1.5 rounded bg-white shadow-sm"
+                              title="Supprimer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
+
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-4 h-4 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: t.color || '#fff' }} />
+                            <div
+                              className="w-4 h-4 rounded-full border border-slate-200 shadow-sm"
+                              style={{ backgroundColor: t.color || '#fff' }}
+                            />
                             <span className="font-bold text-slate-900 truncate">{t.name}</span>
+                          </div>
+
+                          <div className="flex gap-2 mb-2">
+                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700`}>
+                              {t.serviceType}
+                            </span>
                           </div>
                           <div className="space-y-1">
                             {t.slots.map((s, i) => (
@@ -871,61 +969,129 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                   </div>
                 </div>
 
-                <div className={`rounded-lg shadow-lg flex flex-col p-5 transition-colors ${editingTplId ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}>
+                {/* Right Col:Create/Edit Form */}
+                <div className={`rounded-lg shadow-lg flex flex-col p-5 transition-colors ${editingTplId ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'} `}>
                   <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
                     {editingTplId ? (
-                      <> <Edit2 className="bg-white/20 text-white rounded-full p-1" size={24} /> Modifier </>
+                      <>
+                        <Edit2 className="bg-white/20 text-white rounded-full p-1" size={24} />
+                        Modifier le modèle
+                      </>
                     ) : (
-                      <> <Plus className="bg-white text-slate-900 rounded-full p-0.5" size={20} /> Nouveau </>
+                      <>
+                        <Plus className="bg-white text-slate-900 rounded-full p-0.5" size={20} />
+                        Nouveau modèle
+                      </>
                     )}
                   </h4>
+                  <p className="text-xs text-white/70 mb-4 uppercase font-bold tracking-wider">
+                    Pour : {selectedRole === 'GÉNÉRAL' ? 'GÉNÉRAL' : roles.find(r => r.id === selectedRole)?.label}
+                  </p>
+
                   <div className="space-y-4 flex-1">
                     <div>
                       <label className="text-xs font-semibold text-white/70 block mb-1">Nom du modèle</label>
-                      <input value={newTplName} onChange={e => setNewTplName(e.target.value)} className="w-full bg-black/20 border border-white/20 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-white outline-none text-white placeholder-white/30" placeholder="ex:Service Coupure" />
+                      <input
+                        value={newTplName}
+                        onChange={e => setNewTplName(e.target.value)}
+                        className="w-full bg-black/20 border border-white/20 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-white outline-none text-white placeholder-white/30"
+                        placeholder="ex:Service Coupure"
+                      />
                     </div>
+
                     <div>
                       <label className="text-xs font-semibold text-white/70 block mb-1">Type de service</label>
-                      <select value={newTplService} onChange={e => setNewTplService(e.target.value as ShiftServiceType)} className="w-full bg-black/20 border border-white/20 rounded px-3 py-2 text-sm outline-none text-white [&>option]:text-slate-800">
+                      <select
+                        value={newTplService}
+                        onChange={e => setNewTplService(e.target.value as ShiftServiceType)}
+                        className="w-full bg-black/20 border border-white/20 rounded px-3 py-2 text-sm outline-none text-white [&>option]:text-slate-800"
+                      >
                         <option value="midi">Midi</option>
                         <option value="soir">Soir</option>
                         <option value="midi+soir">Midi + Soir</option>
                       </select>
                     </div>
+
                     <div>
                       <label className="text-xs font-semibold text-white/70 block mb-2">Couleur par défaut</label>
                       <div className="flex flex-wrap gap-2">
                         {PASTEL_COLORS.map(c => (
-                          <button key={c} onClick={() => setNewTplColor(c)} className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center ${newTplColor === c ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: c }}>
+                          <button
+                            key={c}
+                            onClick={() => setNewTplColor(c)}
+                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center ${newTplColor === c ? 'border-white' : 'border-transparent'} `}
+                            style={{ backgroundColor: c }}
+                          >
                             {newTplColor === c && <Check size={14} className="text-slate-800" />}
                           </button>
                         ))}
                       </div>
-                      <div className="mt-3 p-2 rounded text-slate-800 text-xs text-center font-bold" style={{ backgroundColor: newTplColor }}>
+                      <div
+                        className="mt-3 p-2 rounded text-slate-800 text-xs text-center font-bold"
+                        style={{ backgroundColor: newTplColor }}
+                      >
                         Aperçu
                       </div>
                     </div>
+
                     <div>
                       <label className="text-xs font-semibold text-white/70 block mb-2">Tranches Horaires</label>
                       <div className="space-y-2">
                         {newTplSlots.map((slot, idx) => (
                           <div key={idx} className="flex items-center gap-2">
-                            <input type="time" value={slot.start} onChange={e => { const up = [...newTplSlots]; up[idx].start = e.target.value; setNewTplSlots(up); }} className="bg-black/20 border border-white/20 rounded px-2 py-1 text-sm text-center w-24 text-white placeholder-white/50" />
+                            <input
+                              type="time"
+                              value={slot.start}
+                              onChange={e => {
+                                const up = [...newTplSlots];
+                                up[idx].start = e.target.value;
+                                setNewTplSlots(up);
+                              }}
+                              className="bg-black/20 border border-white/20 rounded px-2 py-1 text-sm text-center w-24 text-white placeholder-white/50"
+                            />
                             <span className="text-white/50">-</span>
-                            <input type="time" value={slot.end} onChange={e => { const up = [...newTplSlots]; up[idx].end = e.target.value; setNewTplSlots(up); }} className="bg-black/20 border border-white/20 rounded px-2 py-1 text-sm text-center w-24 text-white placeholder-white/50" />
-                            {newTplSlots.length > 1 && (<button onClick={() => setNewTplSlots(newTplSlots.filter((_, i) => i !== idx))} className="text-white/50 hover:text-white"><X size={16} /></button>)}
+                            <input
+                              type="time"
+                              value={slot.end}
+                              onChange={e => {
+                                const up = [...newTplSlots];
+                                up[idx].end = e.target.value;
+                                setNewTplSlots(up);
+                              }}
+                              className="bg-black/20 border border-white/20 rounded px-2 py-1 text-sm text-center w-24 text-white placeholder-white/50"
+                            />
+                            {newTplSlots.length > 1 && (
+                              <button onClick={() => setNewTplSlots(newTplSlots.filter((_, i) => i !== idx))} className="text-white/50 hover:text-white">
+                                <X size={16} />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
-                      <button onClick={() => setNewTplSlots([...newTplSlots, { start: '18:00', end: '23:00' }])} className="mt-2 text-xs text-white/80 hover:text-white font-medium flex items-center gap-1">
+                      <button
+                        onClick={() => setNewTplSlots([...newTplSlots, { start: '18:00', end: '23:00' }])}
+                        className="mt-2 text-xs text-white/80 hover:text-white font-medium flex items-center gap-1"
+                      >
                         <Plus size={12} /> Ajouter une tranche
                       </button>
                     </div>
                   </div>
+
                   <div className="flex gap-2 mt-6">
-                    {editingTplId && (<button onClick={resetTemplateForm} className="flex-1 bg-white/20 hover:bg-white/30 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"><RotateCcw size={16} /> Annuler</button>)}
-                    <button onClick={handleSaveTemplate} className={`flex-1 ${editingTplId ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-bold py-3 rounded-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2`}>
-                      {editingTplId ? 'Enregistrer' : 'Créer'}
+                    {editingTplId && (
+                      <button
+                        onClick={resetTemplateForm}
+                        className="flex-1 bg-white/20 hover:bg-white/30 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <RotateCcw size={16} /> Annuler
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSaveTemplate}
+                      className={`flex-1 ${editingTplId ? 'bg-white text-blue-600 hover:bg-blue-50' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-bold py-3 rounded-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2`}
+                    >
+                      {editingTplId ? <Save size={18} /> : <Plus size={18} />}
+                      {editingTplId ? 'Mettre à jour' : 'Enregistrer'}
                     </button>
                   </div>
                 </div>
@@ -936,13 +1102,131 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
           {/* --- TAB:DEFAULTS --- */}
           {activeTab === 'defaults' && (
             <div className="space-y-6">
-              <p className="text-sm text-slate-600">Définissez les modèles par défaut pour chaque employé et jour de la semaine.</p>
+              <div className="flex flex-col gap-2 mb-4">
+                <h3 className="text-lg font-bold text-slate-800">Horaires par Défaut Hebdomadaire</h3>
+                <p className="text-sm text-slate-500">Configurez la semaine type de vos employés. Ces réglages seront utilisés pour tout nouveau planning.</p>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mt-2">
+                  {roles.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setSelectedRole(r.id)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${selectedRole === r.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        } `}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 text-slate-700 font-semibold border-b">
+                      <tr>
+                        <th className="p-4 text-left min-w-[200px] sticky left-0 bg-slate-100 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Employé ({selectedRole})</th>
+                        {DAYS_SHORT.map(d => (
+                          <th key={d} className="p-2 text-center w-[120px]">{d}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {employees.filter(e => e.role === selectedRole).length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="p-8 text-center text-slate-400 italic">Aucun employé pour ce poste.</td>
+                        </tr>
+                      ) : (
+                        employees.filter(e => e.role === selectedRole).map(emp => (
+                          <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-4 sticky left-0 bg-white z-10 border-r border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                              <div className="font-bold text-slate-800">{emp.name}</div>
+                            </td>
+                            {Array.from({ length: 7 }).map((_, i) => {
+                              const currentVal = emp.weeklyDefault?.[i.toString()] || 'repos';
+                              const isRepos = currentVal === 'repos';
+                              return (
+                                <td key={i} className="p-2">
+                                  <select
+                                    value={currentVal}
+                                    onChange={(e) => handleUpdateDefault(emp.id, i.toString(), e.target.value)}
+                                    className={`w-full text-xs border rounded p-1.5 outline-none cursor-pointer ${isRepos ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white text-blue-700 border-blue-200 font-semibold shadow-sm'
+                                      } `}
+                                  >
+                                    <option value="repos">REPOS</option>
+                                    <optgroup label="Modèles">
+                                      {getDropdownTemplates(emp.role).map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                      ))}
+                                    </optgroup>
+                                  </select>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
           {/* --- TAB:ABSENCES --- */}
           {activeTab === 'absences' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+              <div className="lg:col-span-2 flex flex-col min-h-0">
+                <h3 className="text-lg font-bold text-slate-800 mb-4">Absences Longue Durée</h3>
+                <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex-1 overflow-y-auto">
+                  {longAbsences.length === 0 ? (
+                    <div className="p-10 text-center text-slate-400 italic">
+                      Aucune absence planifiée.
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0">
+                        <tr>
+                          <th className="p-3">Employé</th>
+                          <th className="p-3">Type</th>
+                          <th className="p-3">Début</th>
+                          <th className="p-3">Fin</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {longAbsences.sort((a, b) => b.startDate.localeCompare(a.startDate)).map(abs => {
+                          const emp = employees.find(e => e.id === abs.employeeId);
+                          return (
+                            <tr key={abs.id} className="hover:bg-slate-50">
+                              <td className="p-3 font-medium text-slate-800">{emp?.name || 'Inconnu'}</td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-xs font-bold ${abs.type === 'CP' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'} `}>
+                                  {abs.type}
+                                </span>
+                              </td>
+                              <td className="p-3 text-slate-600">{format(parseISO(abs.startDate), 'dd/MM/yyyy')}</td>
+                              <td className="p-3 text-slate-600">{format(parseISO(abs.endDate), 'dd/MM/yyyy')}</td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => handleDeleteAbsence(abs.id)}
+                                  className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50"
+                                  title="Supprimer (Rétablit le planning)"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
               <div className="bg-red-50 rounded-lg p-5 h-fit border border-red-100">
                 <h4 className="font-bold text-red-900 mb-4 flex items-center gap-2">
                   <CalendarDays size={18} /> Nouvelle Absence
@@ -950,7 +1234,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-red-800 mb-1">Employé</label>
-                    <select className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white" value={absEmpId} onChange={e => setAbsEmpId(e.target.value)}>
+                    <select
+                      className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                      value={absEmpId}
+                      onChange={e => setAbsEmpId(e.target.value)}
+                    >
                       {employees.filter(e => e.isActive).map(e => (
                         <option key={e.id} value={e.id}>{e.name}</option>
                       ))}
@@ -958,7 +1246,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-red-800 mb-1">Type</label>
-                    <select className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white" value={absType} onChange={e => setAbsType(e.target.value)}>
+                    <select
+                      className="w-full border-red-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                      value={absType}
+                      onChange={e => setAbsType(e.target.value)}
+                    >
                       {ABSENCE_TYPES.map(t => (
                         <option key={t} value={t}>{t}</option>
                       ))}
@@ -974,14 +1266,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       <input type="date" value={absEnd} onChange={e => setAbsEnd(e.target.value)} className="w-full border-red-200 rounded px-2 py-2 text-sm" />
                     </div>
                   </div>
-                  <button onClick={handleAddAbsence} className="w-full bg-red-600 text-white py-2 rounded font-bold text-sm hover:bg-red-700 mt-2 shadow-sm">
+                  <button
+                    onClick={handleAddAbsence}
+                    className="w-full bg-red-600 text-white py-2 rounded font-bold text-sm hover:bg-red-700 mt-2 shadow-sm"
+                  >
                     Ajouter Absence
                   </button>
+                  <p className="text-[10px] text-red-600 italic mt-2 leading-tight">
+                    Cela appliquera automatiquement ce code d'absence sur tous les plannings actifs concernés par ces dates.
+                  </p>
                 </div>
               </div>
             </div>
           )}
+
         </div>
+
         <div className="p-4 border-t bg-slate-50 flex justify-end shrink-0">
           <button
             onClick={onClose}
@@ -990,10 +1290,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
             Fermer
           </button>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
-}
+};
 
 export default SettingsModal;
 
