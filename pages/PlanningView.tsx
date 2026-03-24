@@ -857,16 +857,9 @@ const PlanningView: React.FC = () => {
 const ShiftCell: React.FC<{ shift: Shift, isDayView?: boolean, templates?: Template[] }> = ({ shift, isDayView, templates }) => {
   if (!shift || !shift.segments || shift.segments.length === 0) return null;
 
-  // Get note from first segment that has one
-  const shiftNote = shift.segments.find(s => s.note)?.note;
-
+  // Display shifts with their segments
   return (
     <div className={`w-full h-full flex items-center justify-center gap-1 ${isDayView ? 'flex-row' : 'flex-col justify-center'}`}>
-      {shiftNote && !isDayView && (
-        <span className="text-[9px] text-slate-600 font-medium mb-0.5 truncate max-w-full leading-tight">
-          {shiftNote}
-        </span>
-      )}
       {shift.segments.map((seg, i) => {
         let bg = '#ffffff';
         let textStyle: React.CSSProperties = { color: '#1e293b' };
@@ -903,7 +896,14 @@ const ShiftCell: React.FC<{ shift: Shift, isDayView?: boolean, templates?: Templ
         const content = seg.type === 'horaire' ? (seg.label ? seg.label : `${seg.start}-${seg.end}`) : seg.label;
 
         return (
-          <div key={i} className="flex flex-col items-center w-full max-w-[90%]">
+          <div key={i} className="flex flex-col items-center w-full max-w-[90%] gap-0.5">
+            {/* Show note ABOVE segment if it exists */}
+            {seg.note && !isDayView && (
+              <span className="text-[9px] text-slate-600 font-medium truncate max-w-full leading-tight">
+                {seg.note}
+              </span>
+            )}
+            {/* Show segment time/label */}
             <div className={`rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap border shadow-sm flex items-center justify-center w-full`} style={{ backgroundColor: bg }}>
               <span className="truncate" style={textStyle}>{content}</span>
             </div>
