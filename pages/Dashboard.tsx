@@ -21,7 +21,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        await initMockData();
+        // await initMockData(); // Suppression seed automatique
         const data = await getPlannings();
         setPlannings(Array.isArray(data) ? data : []);
       } catch (err) {

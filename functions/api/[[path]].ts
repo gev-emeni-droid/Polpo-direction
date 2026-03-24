@@ -102,21 +102,8 @@ export const onRequest: PagesFunction = async (context) => {
         );
       }
 
-      const STANDARD_ROLES = [
-        { id: 'COMMERCIAL + ADMIN', label: 'COMMERCIAL + ADMIN' },
-        { id: 'RUNNER', label: 'RUNNER' },
-        { id: 'ACCUEIL', label: 'ACCUEIL' },
-        { id: 'ENCADREMENT', label: 'ENCADREMENT' },
-        { id: 'BARMAN', label: 'BARMAN' },
-        { id: 'CHEF DE RANG', label: 'CHEF DE RANG' },
-        { id: 'PLAGE / RUNNER', label: 'PLAGE / RUNNER' },
-        { id: 'APPRENTI', label: 'APPRENTI' }
-      ];
-
-      // Force write the exact 8 roles
-      await kvSetJSON(db, "polpo_roles", STANDARD_ROLES);
-
-      return json({ ok: true, roles: STANDARD_ROLES }, 200, request);
+      // Suppression de la seed automatique des rôles : ne rien faire ici
+      return json({ ok: true, roles: [] }, 200, request);
     }
 
     if (resource === "bootstrap" && request.method === "GET") {
