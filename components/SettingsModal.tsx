@@ -492,7 +492,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70]">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden" style={{ width: '800px', height: '480px', minWidth: '800px', minHeight: '480px', maxWidth: '800px', maxHeight: '480px' }}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden" style={{ width: '1100px', height: '650px', minWidth: '1100px', minHeight: '650px', maxWidth: '1100px', maxHeight: '650px' }}>
         {/* Header */}
         <div className="p-4 border-b flex justify-between items-center bg-slate-50 shrink-0">
           <h2 className="text-xl font-bold text-slate-800">Paramètres</h2>
