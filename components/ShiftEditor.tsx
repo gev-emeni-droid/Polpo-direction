@@ -20,16 +20,23 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
 
     // Manage segments locally
     const [segments, setSegments] = useState<ShiftSegment[]>([]);
+    
+    // Track if user has manually edited (not template change)
+    const [isUserEditing, setIsUserEditing] = useState(false);
 
     // Initialize state from shift
     useEffect(() => {
         if (shift && shift.segments.length > 0) {
             setSegments(shift.segments);
             const firstSeg = shift.segments[0];
-            if (firstSeg.templateId) setSelectedTemplateId(firstSeg.templateId);
+            if (firstSeg.templateId) {
+                setSelectedTemplateId(firstSeg.templateId);
+                setIsUserEditing(false);
+            }
         } else {
             // Default state
             setSegments([{ type: 'horaire', start: '10:00', end: '15:00' }]);
+            setIsUserEditing(false);
         }
     }, [shift]);
 
@@ -47,34 +54,29 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
         loadTemplates();
     }, [employeeRoleId]);
 
-    // Update segments when template changes (but ONLY if user hasn't manually overridden)
+    // Update segments when template changes
     useEffect(() => {
-        if (selectedTemplateId) {
+        if (selectedTemplateId && !isUserEditing) {
             const tpl = availableTemplates.find(t => t.id === selectedTemplateId);
             if (tpl) {
-                // Check if user has manually modified any segment
-                const hasManualOverride = segments.some(s => s.hasOverride);
-                
-                // Only reset segments if user hasn't manually overridden them
-                if (!hasManualOverride) {
-                    const newSegs = tpl.slots.map(slot => ({
-                        type: 'horaire' as const,
-                        start: slot.start,
-                        end: slot.end,
-                        templateId: tpl.id,
-                        hasOverride: false,
-                        colorOverride: tpl.color,
-                        note: ''  // Start with empty notes
-                    }));
-                    setSegments(newSegs);
-                }
+                const newSegs = tpl.slots.map(slot => ({
+                    type: 'horaire' as const,
+                    start: slot.start,
+                    end: slot.end,
+                    templateId: tpl.id,
+                    hasOverride: false,
+                    colorOverride: tpl.color,
+                    note: ''  // Start with empty notes
+                }));
+                setSegments(newSegs);
             }
         }
-    }, [selectedTemplateId, availableTemplates]);
+    }, [selectedTemplateId, availableTemplates, isUserEditing]);
 
     const handleAddSegment = () => {
         // By default, add evening segment
-        setSegments([...segments, { type: 'horaire', start: '18:00', end: '23:00', note: '' }]);
+        setIsUserEditing(true);
+        setSegments([...segments, { type: 'horaire', start: '18:00', end: '23:00', note: '', hasOverride: true }]);
     };
 
     const handleRemoveSegment = (index: number) => {
@@ -85,7 +87,12 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
 
     const updateSegment = (index: number, field: keyof ShiftSegment, value: any) => {
         const newSegs = [...segments];
-        newSegs[index] = { ...newSegs[index], [field]: value, hasOverride: true };
+        newSegs[index] = { ...newSegs[index], [field]: value };
+        // Mark as user editing only when changing time, not notes
+        if (field === 'start' || field === 'end') {
+            setIsUserEditing(true);
+            newSegs[index].hasOverride = true;
+        }
         setSegments(newSegs);
     };
 

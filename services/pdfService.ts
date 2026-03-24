@@ -319,7 +319,7 @@ const generateDayPDF = (planning: Planning, templates: Template[], options: Expo
                         }
 
                         if (horaireSegments.length > 0) {
-                            const text = horaireSegments.map(s => `${s.start}-${s.end}`).join(' / ');
+                            const text = horaireSegments.map(s => `${s.start}-${s.end}${s.note ? ' (' + s.note + ')' : ''}`).join(' / ');
                             cellContent = text;
                         }
                     }
@@ -509,7 +509,7 @@ export const generatePlanningPDF = (planning: Planning, templates: Template[], o
             const s = row.shifts[date];
             if (!s || !s.segments || s.segments.length === 0) { rowData.push(''); return; }
             const parts = s.segments.map(seg => {
-                if (seg.type === 'horaire') return `${seg.start}-${seg.end}`;
+                if (seg.type === 'horaire') return `${seg.start}-${seg.end}${seg.note ? ' (' + seg.note + ')' : ''}`;
                 return seg.label || '';
             }).filter(Boolean).join('\n');
 
