@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { ReactSortable } from 'react-sortablejs';
 import * as api from '../services/api';
 import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw, CalendarDays, Palette, Search } from 'lucide-react';
 import { Employee, Template, STANDARD_ROLES, ShiftServiceType, TimeSlot, ABSENCE_TYPES, LongAbsence } from '../types';
 import {
   getEmployees, getTemplates, saveEmployees, updateTemplate, addTemplate, deleteTemplate,
-  getRoles, addRole, updateRole, saveRole, deleteRole,
+  getRoles, addRole, updateRole, saveRole, deleteRole, saveRoles,
   getLongAbsences, saveLongAbsences, saveLongAbsence, addLongAbsence, deleteLongAbsence,
   getTheme, saveTheme, deleteEmployee, updateEmployeeDetails, updateEmployeeWeeklyDefault
 } from '../services/storage';
@@ -673,10 +674,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <ReactSortable
+                    tag="tbody"
+                    list={roles}
+                    setList={async (newRoles) => {
+                      setRoles(newRoles);
+                      try {
+                        await saveRoles(newRoles);
+                      } catch (err) {
+                        console.error('Erreur lors de la sauvegarde de l\'ordre:', err);
+                      }
+                    }}
+                    animation={200}
+                    handle=".drag-handle"
+                  >
                     {roles.map(r => (
-                      <tr key={r.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="p-3">
+                      <tr key={r.id} className="border-b last:border-0 hover:bg-slate-50 cursor-move">
+                        <td className="p-3 flex items-center gap-2">
+                          <span className="drag-handle cursor-grab text-slate-400 hover:text-blue-500">
+                            <svg width={16} height={16} fill="none" viewBox="0 0 16 16">
+                              <circle cx={4} cy={4} r={1.5} fill="currentColor" />
+                              <circle cx={4} cy={8} r={1.5} fill="currentColor" />
+                              <circle cx={4} cy={12} r={1.5} fill="currentColor" />
+                              <circle cx={8} cy={4} r={1.5} fill="currentColor" />
+                              <circle cx={8} cy={8} r={1.5} fill="currentColor" />
+                              <circle cx={8} cy={12} r={1.5} fill="currentColor" />
+                            </svg>
+                          </span>
                           {editingRoleId === r.id ? (
                             <div className="flex items-center gap-2">
                               <input
@@ -697,6 +721,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                         </td>
                       </tr>
                     ))}
+                  </ReactSortable>
+                  <tbody>
                     {/* Add Role Row */}
                     <tr className="bg-blue-50/30">
                       <td className="p-3">
