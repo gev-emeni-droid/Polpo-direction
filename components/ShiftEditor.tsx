@@ -47,24 +47,30 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
         loadTemplates();
     }, [employeeRoleId]);
 
-    // Update segments when template changes
+    // Update segments when template changes (but ONLY if user hasn't manually overridden)
     useEffect(() => {
         if (selectedTemplateId) {
             const tpl = availableTemplates.find(t => t.id === selectedTemplateId);
             if (tpl) {
-                const newSegs = tpl.slots.map(slot => ({
-                    type: 'horaire' as const,
-                    start: slot.start,
-                    end: slot.end,
-                    templateId: tpl.id,
-                    hasOverride: false,
-                    colorOverride: tpl.color,
-                    note: ''  // Start with empty notes
-                }));
-                setSegments(newSegs);
+                // Check if user has manually modified any segment
+                const hasManualOverride = segments.some(s => s.hasOverride);
+                
+                // Only reset segments if user hasn't manually overridden them
+                if (!hasManualOverride) {
+                    const newSegs = tpl.slots.map(slot => ({
+                        type: 'horaire' as const,
+                        start: slot.start,
+                        end: slot.end,
+                        templateId: tpl.id,
+                        hasOverride: false,
+                        colorOverride: tpl.color,
+                        note: ''  // Start with empty notes
+                    }));
+                    setSegments(newSegs);
+                }
             }
         }
-    }, [selectedTemplateId, availableTemplates]);
+    }, [selectedTemplateId, availableTemplates, segments]);
 
     const handleAddSegment = () => {
         // By default, add evening segment
