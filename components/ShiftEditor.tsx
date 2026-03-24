@@ -70,7 +70,7 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                 }
             }
         }
-    }, [selectedTemplateId, availableTemplates, segments]);
+    }, [selectedTemplateId, availableTemplates]);
 
     const handleAddSegment = () => {
         // By default, add evening segment
