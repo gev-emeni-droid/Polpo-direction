@@ -65,7 +65,12 @@ const InvoicePage: React.FC = () => {
             if (savedSettings) {
                 setSettings(savedSettings);
             } else {
-                setIsSettingsOpen(true); // Open settings if first time
+                // Only open settings modal on first visit
+                const hasVisited = localStorage.getItem('invoicePageVisited');
+                if (!hasVisited) {
+                    setIsSettingsOpen(true);
+                    localStorage.setItem('invoicePageVisited', 'true');
+                }
             }
 
             // 2. Prestations

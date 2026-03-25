@@ -17,12 +17,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     try {
         const data: any = await context.request.json();
 
+        // Use INSERT OR REPLACE to upsert settings
         await context.env.FACTURE_DB.prepare(`
-      UPDATE settings SET 
-        name = ?, street = ?, zipCode = ?, city = ?, 
-        siret = ?, vatNumber = ?, phone = ?, logo = ?, primaryColor = ?,
-        rcs = ?, ape = ?, capital = ?, headquarters = ?
-      WHERE id = 1
+      INSERT OR REPLACE INTO settings (id, name, street, zipCode, city, siret, vatNumber, phone, logo, primaryColor, rcs, ape, capital, headquarters) 
+      VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
             data.name, data.street, data.zipCode, data.city,
             data.siret, data.vatNumber, data.phone, data.logo, data.primaryColor,

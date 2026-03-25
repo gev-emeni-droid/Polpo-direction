@@ -60,15 +60,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         const data: any = await context.request.json();
         const fullDataJson = JSON.stringify(data);
 
-        // Update full_data. We also update legacy searchable fields for convenience if needed, 
-        // but primarily we rely on full_data now.
-        // We maintain invoiceNumber and date as separate columns for potential lightweight queries.
+        // Use INSERT OR REPLACE to upsert invoice data
         await context.env.FACTURE_DB.prepare(`
-      UPDATE current_invoice SET 
-        invoiceNumber = ?, 
-        date = ?, 
-        full_data = ?
-      WHERE id = 1
+      INSERT OR REPLACE INTO current_invoice (id, invoiceNumber, date, full_data)
+      VALUES (1, ?, ?, ?)
     `).bind(
             data.invoiceNumber,
             data.date,
