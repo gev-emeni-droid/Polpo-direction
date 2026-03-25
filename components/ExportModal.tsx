@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, CheckSquare, Calendar, Columns } from 'lucide-react';
 import { getRoles } from '../services/storage';
+import { planningPreferencesApi } from '../services/planningPreferencesApi';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -41,6 +42,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
 
   const [headerColor, setHeaderColor] = useState('#C1D5AF');
   const [textColor, setTextColor] = useState('#000000');
+  const [planningPreferences, setPlanningPreferences] = useState({
+    darkMode: false,
+    exportSelectedRoles: [],
+    invoiceCounter: 0
+  });
 
   const PRESET_COLORS = [
     '#4AA3A2', '#A7E0E0', '#212E53', '#F4CFDF',
@@ -54,15 +60,19 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
       const loadRoles = async () => {
         const roles = await getRoles();
         setAvailableRoles(roles);
-        // Charger la sélection/ordre depuis le localStorage
-        const saved = localStorage.getItem('export_selected_roles');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Ne garder que les rôles encore existants
-          const filtered = parsed.filter((id: string) => roles.some(r => r.id === id));
+        
+        // Load selected roles from DB
+        const prefs = await planningPreferencesApi.get();
+        setPlanningPreferences(prefs);
+        
+        if (prefs && prefs.exportSelectedRoles && prefs.exportSelectedRoles.length > 0) {
+          // Filter to only keep roles that still exist
+          const filtered = prefs.exportSelectedRoles.filter((id: string) => 
+            roles.some(r => r.id === id)
+          );
           setSelectedRoles(filtered);
         } else {
-          setSelectedRoles(roles.map(r => r.id)); // Par défaut, tout cocher
+          setSelectedRoles(roles.map(r => r.id)); // Default: select all
         }
       };
       loadRoles();
@@ -71,7 +81,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
     }
   }, [isOpen, weekDates]);
 
-  // Ajoute ou retire un rôle en respectant l'ordre de sélection
+  // Add or remove a role while respecting selection order
   const toggleRole = (roleId: string) => {
     let newSelected: string[];
     if (selectedRoles.includes(roleId)) {
@@ -80,7 +90,13 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
       newSelected = [...selectedRoles, roleId];
     }
     setSelectedRoles(newSelected);
-    localStorage.setItem('export_selected_roles', JSON.stringify(newSelected));
+    
+    // Save to DB
+    planningPreferencesApi.save({
+      darkMode: planningPreferences.darkMode,
+      exportSelectedRoles: newSelected,
+      invoiceCounter: planningPreferences.invoiceCounter
+    });
   };
 
   const handleConfirm = () => {
@@ -233,11 +249,21 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
                 <button onClick={() => {
                   const all = availableRoles.map(r => r.id);
                   setSelectedRoles(all);
-                  localStorage.setItem('export_selected_roles', JSON.stringify(all));
+                  // Save to DB
+                  planningPreferencesApi.save({
+                    darkMode: planningPreferences.darkMode,
+                    exportSelectedRoles: all,
+                    invoiceCounter: planningPreferences.invoiceCounter
+                  });
                 }} className="text-[10px] text-blue-600 font-bold hover:underline">Tout cocher</button>
                 <button onClick={() => {
                   setSelectedRoles([]);
-                  localStorage.setItem('export_selected_roles', JSON.stringify([]));
+                  // Save to DB
+                  planningPreferencesApi.save({
+                    darkMode: planningPreferences.darkMode,
+                    exportSelectedRoles: [],
+                    invoiceCounter: planningPreferences.invoiceCounter
+                  });
                 }} className="text-[10px] text-slate-400 font-bold hover:underline">Tout décocher</button>
               </div>
             </div>

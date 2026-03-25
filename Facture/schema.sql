@@ -53,3 +53,11 @@ CREATE TABLE user_preferences (
   darkMode BOOLEAN DEFAULT 0,
   invoicePageVisited BOOLEAN DEFAULT 0
 );
+
+DROP TABLE IF EXISTS planning_preferences;
+CREATE TABLE planning_preferences (
+  id INTEGER PRIMARY KEY,
+  darkMode BOOLEAN DEFAULT 0,
+  exportSelectedRoles TEXT DEFAULT '[]',
+  invoiceCounter INTEGER DEFAULT 0
+);
