@@ -1,6 +1,6 @@
 
 import { STORAGE_KEYS } from './constants';
-import { planningPreferencesApi } from '../../services/planningPreferencesApi';
+import { planningPreferencesApi } from '../../../services/planningPreferencesApi';
 
 export const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR', {
