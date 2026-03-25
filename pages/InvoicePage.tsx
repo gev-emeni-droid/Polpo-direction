@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Settings, FileText, Printer, RefreshCcw, History, Moon, Sun, ArrowLeft, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { RestaurantSettings, InvoiceData } from '../src/features/invoice/types';
-import { PREDEFINED_DESCRIPTIONS } from '../src/features/invoice/constants';
 import { generateInvoiceNumber, getCurrentDate, generatePDF } from '../src/features/invoice/utils';
 import emailjs from '@emailjs/browser';
 import { api } from '../services/invoiceApi';
@@ -39,19 +38,19 @@ const InvoicePage: React.FC = () => {
             companyName: '',
             address: ''
         },
-        description: PREDEFINED_DESCRIPTIONS[0],
+        description: '',
         amountHT10: 0,
         amountHT20: 0,
         items: [{
             id: crypto.randomUUID(),
-            description: PREDEFINED_DESCRIPTIONS[0],
+            description: '',
             amountHT10: 0,
             amountHT20: 0
         }],
         deposit: 0
     });
 
-    const [prestations, setPrestations] = useState<string[]>(PREDEFINED_DESCRIPTIONS);
+    const [prestations, setPrestations] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [preferences, setPreferences] = useState({ darkMode: false, invoicePageVisited: false });
 
@@ -87,14 +86,14 @@ const InvoicePage: React.FC = () => {
                     if (savedInvoice.description || savedInvoice.amountHT10 || savedInvoice.amountHT20) {
                         savedInvoice.items = [{
                             id: crypto.randomUUID(),
-                            description: savedInvoice.description || PREDEFINED_DESCRIPTIONS[0],
+                            description: savedInvoice.description || '',
                             amountHT10: savedInvoice.amountHT10 || 0,
                             amountHT20: savedInvoice.amountHT20 || 0
                         }];
                     } else {
                         savedInvoice.items = [{
                             id: crypto.randomUUID(),
-                            description: PREDEFINED_DESCRIPTIONS[0],
+                            description: '',
                             amountHT10: 0,
                             amountHT20: 0
                         }];

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, FileText, Printer, RefreshCcw, History, Moon, Sun } from 'lucide-react';
 import { RestaurantSettings, InvoiceData } from './types';
-import { STORAGE_KEYS, PREDEFINED_DESCRIPTIONS } from './constants';
+import { STORAGE_KEYS } from './constants';
 import { generateInvoiceNumber, getCurrentDate, generatePDF } from './utils';
 import emailjs from '@emailjs/browser';
 import { api } from './api';
@@ -36,13 +36,13 @@ const App: React.FC = () => {
       companyName: '',
       address: ''
     },
-    description: PREDEFINED_DESCRIPTIONS[0],
+    description: '',
     amountHT10: 0,
     amountHT20: 0
   });
 
 
-  const [prestations, setPrestations] = useState<string[]>(PREDEFINED_DESCRIPTIONS);
+  const [prestations, setPrestations] = useState<string[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [preferences, setPreferences] = useState<any>({ darkMode: false });
 
