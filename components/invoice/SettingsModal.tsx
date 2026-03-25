@@ -90,8 +90,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     if (logoUrl) {
       favicon.href = logoUrl;
     } else {
-      // Default L'IAMANI logo
-      favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="70" font-weight="bold" fill="%238B7566" letter-spacing="2">L\'IAMANI</text></svg>';
+      // Default L'IAMANI logo with transparent background
+      favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256"><defs><style>text { font-family: Arial, sans-serif; font-size: 180px; font-weight: bold; fill: %238B7566; letter-spacing: 4px; }</style></defs><text x="512" y="140" dominant-baseline="middle" text-anchor="middle">L\'IAMANI</text></svg>';
     }
   };
 
