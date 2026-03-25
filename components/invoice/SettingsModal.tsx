@@ -90,8 +90,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     if (logoUrl) {
       favicon.href = logoUrl;
     } else {
-      // Default "Planning" logo matching the user's design
-      favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23F8F8F8"/><text x="60" y="70" dominant-baseline="middle" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="bold" fill="%23E879A0" letter-spacing="1">Planning</text></svg>';
+      // Default L'IAMANI logo
+      favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 480"><rect width="768" height="480" fill="%23E8DCC8"/><text x="280" y="280" font-family="Arial, sans-serif" font-size="140" font-weight="bold" fill="%238B7566" letter-spacing="8">L\'IAMANI</text><circle cx="630" cy="280" r="110" fill="%23D4A5B8"/><text x="630" y="310" dominant-baseline="middle" text-anchor="middle" font-family="Georgia, serif" font-size="100" font-weight="bold" fill="%238B3A50">L</text></svg>';
     }
   };
 
