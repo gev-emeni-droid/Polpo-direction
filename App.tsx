@@ -21,8 +21,8 @@ const updateFavicon = (logoUrl?: string) => {
     // If logo exists, use it as favicon
     favicon.href = logoUrl;
   } else {
-    // Otherwise, use default (empty will show browser default or nothing)
-    favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" dominant-baseline="middle" text-anchor="middle" font-size="60" font-weight="bold" fill="%234AA3A2">L</text></svg>';
+    // Otherwise, use default L'IAmani logo
+    favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%234AA3A2"/><circle cx="50" cy="50" r="35" fill="white" opacity="0.1"/><text x="50" y="58" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">L</text><text x="50" y="28" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" letter-spacing="1">AMANI</text></svg>';
   }
 };
 
