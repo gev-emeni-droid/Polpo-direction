@@ -106,9 +106,10 @@ const InvoicePage: React.FC = () => {
                 setInvoiceData(savedInvoice);
             } else {
                 // Initialize if empty
+                const newInvoiceNumber = await generateInvoiceNumber();
                 setInvoiceData(prev => ({
                     ...prev,
-                    invoiceNumber: generateInvoiceNumber()
+                    invoiceNumber: newInvoiceNumber
                 }));
             }
 
@@ -246,11 +247,12 @@ const InvoicePage: React.FC = () => {
         }
     };
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (confirm('Voulez-vous réinitialiser le formulaire pour un nouveau client ?\\n(Conserve les produits et montants, efface uniquement le client)')) {
+            const newInvoiceNumber = await generateInvoiceNumber();
             setInvoiceData(prev => ({
                 ...prev,
-                invoiceNumber: generateInvoiceNumber(),
+                invoiceNumber: newInvoiceNumber,
                 date: getCurrentDate(),
                 client: { companyName: '', address: '', zipCode: '', city: '', country: '' },
                 // On conserve la description, les montants et les couverts

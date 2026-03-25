@@ -1,5 +1,6 @@
 
 import { STORAGE_KEYS } from './constants';
+import { api } from './api';
 
 export const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR', {
@@ -8,14 +9,21 @@ export const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-export const generateInvoiceNumber = () => {
+export const generateInvoiceNumber = async () => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
 
-  const currentCounter = localStorage.getItem(STORAGE_KEYS.INVOICE_COUNTER) || '0';
-  const nextCounter = parseInt(currentCounter) + 1;
-  localStorage.setItem(STORAGE_KEYS.INVOICE_COUNTER, nextCounter.toString());
+  // Get current preferences from DB
+  const prefs = await api.preferences.get();
+  const currentCounter = prefs.invoiceCounter || 0;
+  const nextCounter = currentCounter + 1;
+
+  // Save updated counter back to DB
+  await api.preferences.save({
+    ...prefs,
+    invoiceCounter: nextCounter
+  });
 
   return `F-${year}${month}-${String(nextCounter).padStart(4, '0')}`;
 };

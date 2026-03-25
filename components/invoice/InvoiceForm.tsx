@@ -156,7 +156,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ data, onChange, prestations }
                 placeholder="Ex: F-202403-0001"
               />
               <button
-                onClick={() => updateField('invoiceNumber', generateInvoiceNumber())}
+                onClick={async () => {
+                  const newNumber = await generateInvoiceNumber();
+                  updateField('invoiceNumber', newNumber);
+                }}
                 className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
                 title="Générer un nouveau numéro"
               >

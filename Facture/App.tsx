@@ -43,10 +43,8 @@ const App: React.FC = () => {
 
 
   const [prestations, setPrestations] = useState<string[]>(PREDEFINED_DESCRIPTIONS);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved === 'true';
-  });
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [preferences, setPreferences] = useState<any>({ darkMode: false });
 
   // Load settings, data and prestations on mount
   useEffect(() => {
@@ -78,19 +76,26 @@ const App: React.FC = () => {
         setInvoiceData(savedInvoice);
       } else {
         // Initialize if empty
+        const newInvoiceNumber = await generateInvoiceNumber();
         setInvoiceData(prev => ({
           ...prev,
-          invoiceNumber: generateInvoiceNumber()
+          invoiceNumber: newInvoiceNumber
         }));
       }
     };
     fetchData();
   }, []);
 
-  // Persist dark mode preference
+  // Persist dark mode preference to DB
   useEffect(() => {
-    localStorage.setItem('darkMode', isDarkMode.toString());
-  }, [isDarkMode]);
+    const timer = setTimeout(() => {
+      api.preferences.save({
+        ...preferences,
+        darkMode: isDarkMode
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isDarkMode, preferences]);
 
   // Auto-save invoice data
   useEffect(() => {
@@ -187,11 +192,12 @@ const App: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (confirm('Voulez-vous réinitialiser le formulaire pour un nouveau client ?\n(Conserve les produits et montants, efface uniquement le client)')) {
+      const newInvoiceNumber = await generateInvoiceNumber();
       setInvoiceData(prev => ({
         ...prev,
-        invoiceNumber: generateInvoiceNumber(),
+        invoiceNumber: newInvoiceNumber,
         date: getCurrentDate(),
         client: { companyName: '', address: '' },
         // On conserve la description, les montants et les couverts

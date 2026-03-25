@@ -24,6 +24,29 @@ export const api = {
             });
         }
     },
+    preferences: {
+        get: async () => {
+            try {
+                const res = await fetch('/api/invoice/preferences');
+                if (!res.ok) throw new Error('Failed to fetch preferences');
+                return await res.json();
+            } catch (e) {
+                console.error(e);
+                return { darkMode: false, invoicePageVisited: false, invoiceCounter: 0 };
+            }
+        },
+        save: async (preferences: any) => {
+            try {
+                await fetch('/api/invoice/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(preferences)
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    },
     invoice: {
         get: async (): Promise<InvoiceData | null> => {
             try {
