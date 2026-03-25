@@ -5,6 +5,42 @@ import PlanningView from './pages/PlanningView';
 import InvoicePage from './pages/InvoicePage';
 import { migrateLocalStorageToD1, initMockData, getTheme } from './services/storage';
 import { applyTheme } from './services/theme';
+import { api as invoiceApi } from './services/invoiceApi';
+
+const updateFavicon = (logoUrl?: string) => {
+  let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+  
+  if (!favicon) {
+    favicon = document.createElement('link');
+    favicon.rel = 'icon';
+    favicon.type = 'image/png';
+    document.head.appendChild(favicon);
+  }
+
+  if (logoUrl) {
+    // If logo exists, use it as favicon
+    favicon.href = logoUrl;
+  } else {
+    // Otherwise, use default (empty will show browser default or nothing)
+    favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="50" dominant-baseline="middle" text-anchor="middle" font-size="60" font-weight="bold" fill="%234AA3A2">L</text></svg>';
+  }
+};
+
+const loadInvoiceLogoSettings = async () => {
+  try {
+    // Load settings from API (invoice settings)
+    const settings = await invoiceApi.settings.get();
+    if (settings && settings.logo) {
+      updateFavicon(settings.logo);
+      return;
+    }
+  } catch (err) {
+    console.warn('Failed to load invoice settings for favicon:', err);
+  }
+  
+  // If no logo found, use default
+  updateFavicon();
+};
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -30,6 +66,13 @@ const App: React.FC = () => {
         await initMockData();
       } catch (err) {
         console.error('Mock data init failed:', err);
+      }
+
+      try {
+        // Load invoice logo and update favicon
+        await loadInvoiceLogoSettings();
+      } catch (err) {
+        console.warn('Favicon init failed:', err);
       }
     };
 

@@ -77,9 +77,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, 
     }
   };
 
+  const updateFavicon = (logoUrl?: string) => {
+    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.type = 'image/png';
+      document.head.appendChild(favicon);
+    }
+
+    if (logoUrl) {
+      favicon.href = logoUrl;
+    } else {
+      favicon.href = '/polpo-logo.png';
+    }
+  };
+
   const handleSave = async () => {
     await api.settings.save(settings);
     onSave(settings);
+    // Update favicon with new logo
+    updateFavicon(settings.logo || undefined);
     onClose();
   };
 

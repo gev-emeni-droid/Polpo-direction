@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ReactSortable } from 'react-sortablejs';
 import * as api from '../services/api';
 import { X, Plus, Trash2, Edit2, Check, Clock, Save, RotateCcw, CalendarDays, Palette, Search } from 'lucide-react';
-import { Employee, Template, STANDARD_ROLES, ShiftServiceType, TimeSlot, ABSENCE_TYPES, LongAbsence } from '../types';
+import { Employee, Template, ShiftServiceType, TimeSlot, ABSENCE_TYPES, LongAbsence } from '../types';
 import {
   getEmployees, getTemplates, saveEmployees, updateTemplate, addTemplate, deleteTemplate,
   getRoles, addRole, updateRole, saveRole, deleteRole, saveRoles,
@@ -44,6 +44,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
   // -- Theme Tab --
   const [currentTheme, setCurrentTheme] = useState('#4AA3A2');
+
+  // --- Company Name (Profil) ---
+  const [companyName, setCompanyName] = useState('');
+  const [companyNameInput, setCompanyNameInput] = useState('');
 
   // --- PIN Code (Profil) ---
   const [pinEnabled, setPinEnabled] = useState(false);
@@ -114,6 +118,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
         setPinEnabled(false);
         setPinValue('');
       }
+      
+      // Charger le nom de l'entreprise
+      const company = await api.getSetting('company_name');
+      if (typeof company === 'string' && company.length > 0) {
+        setCompanyName(company);
+        setCompanyNameInput(company);
+      }
     } catch {
       setPinEnabled(false);
       setPinValue('');
@@ -152,6 +163,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
       setPinInput('');
     } catch {
       setPinError('Erreur lors de la désactivation du code PIN.');
+    }
+  };
+
+  const handleSaveCompanyName = async () => {
+    if (!companyNameInput.trim()) return;
+    try {
+      await api.setSetting('company_name', companyNameInput.trim());
+      setCompanyName(companyNameInput.trim());
+      onDataChanged?.(); // Notify parent to refresh
+    } catch {
+      alert('Erreur lors de la sauvegarde du nom de l\'entreprise');
     }
   };
 
@@ -449,6 +471,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
   const handleAddAbsence = async () => {
     if (!absEmpId || !absStart || !absEnd) return alert("Veuillez remplir tous les champs");
     if (absStart > absEnd) return alert("Date de fin invalide");
+    if (absType === "Séléctionnez une ABS") return alert("Veuillez sélectionner un type d'absence valide");
 
     try {
       await addLongAbsence({
@@ -598,8 +621,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-4">
                         <span className="font-mono text-lg tracking-widest">PIN : ****</span>
-                        <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700" onClick={() => setPinEditMode(true)}>Modifier</button>
-                        <button className="bg-red-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-600" onClick={handleDisablePin}>Désactiver</button>
+                        <button className="text-white px-3 py-1.5 rounded text-xs font-bold transition-opacity" style={{ backgroundColor: currentTheme }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }} onClick={() => setPinEditMode(true)}>Modifier</button>
+                        <button className="text-white px-3 py-1.5 rounded text-xs font-bold transition-opacity" style={{ backgroundColor: currentTheme }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }} onClick={handleDisablePin}>Désactiver</button>
                       </div>
                     </div>
                   )}
@@ -616,12 +639,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                         onChange={e => setPinInput(e.target.value.replace(/[^0-9]/g, ''))}
                       />
                       <div className="flex gap-2 mt-2">
-                        <button className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-green-700" onClick={handleSavePin}>Enregistrer</button>
-                        {pinEnabled && <button className="bg-slate-400 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
+                        <button className="text-white px-4 py-2 rounded text-sm font-bold transition-colors" style={{ backgroundColor: currentTheme }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }} onClick={handleSavePin}>Enregistrer</button>
+                        {pinEnabled && <button className="bg-slate-400 text-white px-4 py-2 rounded text-sm font-bold hover:bg-slate-500" onClick={() => { setPinEditMode(false); setPinInput(''); }}>Annuler</button>}
                       </div>
                       {pinError && <div className="text-red-600 text-xs mt-1">{pinError}</div>}
                     </div>
                   )}
+                </div>
+
+                {/* Nom de l'entreprise */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 mb-8">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Palette className="text-slate-400" size={20} />
+                    Nom de l'Entreprise
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Ce nom apparaîtra dans le header de l'application et dans les documents PDF.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="border rounded px-3 py-2 text-sm focus:ring-2 outline-none"
+                      style={{ borderColor: currentTheme, outlineColor: currentTheme }}
+                      placeholder="Nom de votre entreprise"
+                      value={companyNameInput}
+                      onChange={e => setCompanyNameInput(e.target.value)}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = currentTheme; e.currentTarget.style.boxShadow = `0 0 0 3px ${currentTheme}20`; }}
+                      onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button className="text-white px-4 py-2 rounded text-sm font-bold transition-colors" style={{ backgroundColor: currentTheme }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.8'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }} onClick={handleSaveCompanyName}>Enregistrer</button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Couleur principale */}

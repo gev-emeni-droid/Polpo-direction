@@ -1,5 +1,5 @@
 
-import { Employee, Planning, Template, STANDARD_ROLES, ShiftServiceType, ShiftSegment, ShiftType, LongAbsence } from '../types';
+import { Employee, Planning, Template, ShiftServiceType, ShiftSegment, ShiftType, LongAbsence } from '../types';
 import { addDays, format, parseISO, startOfWeek, endOfWeek, isBefore, startOfDay, getDay } from 'date-fns';
 import * as api from './api';
 
@@ -13,9 +13,7 @@ export const getRoles = async () => {
   const blacklist = await getDeletedRolesBlacklist();
   const blacklistSet = new Set(blacklist);
 
-  // Ensure all STANDARD_ROLES exist (UNLESS blacklisted)
-  // REMOVED: Backend 'bootstrap' handles this. Client should not override/reset permissions.
-  // for (const roleId of STANDARD_ROLES) { ... }
+  // Roles are now fully configurable by each client - no hardcoded defaults
 
   // Collect all roles actually used by employees and templates
   const usedRoles = new Set<string>();
@@ -577,14 +575,21 @@ const applyAbsenceRangeToPlannings = async (absence: LongAbsence) => {
       const currentStr = format(current, 'yyyy-MM-dd');
 
       if (currentStr >= absence.startDate && currentStr <= absence.endDate) {
-        // Apply Absence
-        newShifts[currentStr] = {
-          date: currentStr,
-          type: 'absence',
-          serviceType: 'none',
-          segments: [{ type: 'code', label: absence.type }]
-        };
-        rowChanged = true;
+        // Check if the current day is already a rest day (repos)
+        const existingShift = newShifts[currentStr];
+        const isRestDay = !existingShift || existingShift.type === 'repos';
+        
+        // Don't apply absence on rest days - only on working days
+        if (!isRestDay) {
+          // Apply Absence
+          newShifts[currentStr] = {
+            date: currentStr,
+            type: 'absence',
+            serviceType: 'none',
+            segments: [{ type: 'code', label: absence.type }]
+          };
+          rowChanged = true;
+        }
       }
     }
 

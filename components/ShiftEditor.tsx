@@ -157,7 +157,10 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                             <select
                                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm appearance-none bg-white hover:border-slate-300 focus:ring-1 focus:ring-blue-500 outline-none pr-8 text-slate-700 transition-colors"
                                 value={selectedTemplateId}
-                                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedTemplateId(e.target.value);
+                                    setIsUserEditing(false);
+                                }}
                             >
                                 <option value="">-- Sélectionner --</option>
                                 {availableTemplates.map(t => (
@@ -216,11 +219,13 @@ const ShiftEditor: React.FC<ShiftEditorProps> = ({ shift, employeeName, employee
                                         <select
                                             className="w-full border border-slate-200 rounded px-3 py-1.5 text-sm appearance-none bg-white hover:border-slate-300 focus:ring-1 focus:ring-blue-500 outline-none text-slate-700 transition-colors"
                                             value={seg.label || ''}
-                                            onChange={(e) => updateSegment(idx, 'label', e.target.value || undefined)}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val !== "Séléctionnez une ABS") {
+                                                    updateSegment(idx, 'label', val || undefined);
+                                                }
+                                            }}
                                         >
-                                            <option value="">Pas de coupure</option>
-                                            <option value="REPOS">REPOS</option>
-                                            <option value="Ecole">Ecole</option>
                                             <optgroup label="Absences">
                                                 {ABSENCE_TYPES.map(a => (
                                                     <option key={a} value={a}>{a}</option>

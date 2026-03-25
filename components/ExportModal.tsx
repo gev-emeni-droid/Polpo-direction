@@ -9,6 +9,7 @@ interface ExportOptions {
   period: 'WEEK' | 'DAY';
   selectedDay: string; // YYYY-MM-DD
   columns: {
+    horaire: boolean;
     arrival: boolean;
     departure: boolean;
     signature: boolean;
@@ -33,6 +34,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
   // Options
   const [period, setPeriod] = useState<'WEEK' | 'DAY'>('WEEK');
   const [selectedDay, setSelectedDay] = useState<string>('');
+  const [showHoraire, setShowHoraire] = useState(true);
   const [showArrival, setShowArrival] = useState(true);
   const [showDeparture, setShowDeparture] = useState(true);
   const [showSignature, setShowSignature] = useState(true);
@@ -87,6 +89,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
       period,
       selectedDay: selectedDay || weekDates[0],
       columns: {
+        horaire: showHoraire,
         arrival: showArrival,
         departure: showDeparture,
         signature: showSignature
@@ -199,7 +202,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onConfirm, w
             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Columns size={16} /> Colonnes à afficher
             </h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-slate-50">
+                <input type="checkbox" checked={showHoraire} onChange={e => setShowHoraire(e.target.checked)} className="rounded text-blue-600 focus:ring-blue-500" />
+                <span className="text-sm text-slate-700">Horaire</span>
+              </label>
               <label className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-slate-50">
                 <input type="checkbox" checked={showArrival} onChange={e => setShowArrival(e.target.checked)} className="rounded text-blue-600 focus:ring-blue-500" />
                 <span className="text-sm text-slate-700">Heure arrivée</span>

@@ -84,7 +84,7 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
 
       // Init Absence
       if (activeEmps.length > 0) setSelectedEmpId(activeEmps[0].id);
-      setAbsenceType("CP"); // Default to CP or first type
+      setAbsenceType("Séléctionnez une ABS"); // Default to placeholder
 
       setStartTime('10:00');
       setEndTime('15:00');
@@ -122,6 +122,7 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ isOpen, onClose, onSave, 
     if (mode === 'long_absence') {
       if (!selectedEmpId) return alert("Veuillez sélectionner un employé.");
       if (startDate > endDate) return alert("La date de fin doit être après la date de début.");
+      if (absenceType === "Séléctionnez une ABS") return alert("Veuillez sélectionner un type d'absence valide.");
 
       try {
         // Use central storage to add the absence, which will propagate to plannings automatically

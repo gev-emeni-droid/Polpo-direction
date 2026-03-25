@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, LogOut, Calendar, Archive, Trash, Edit, ExternalLink, X, Info, FileText } from 'lucide-react';
 import { getPlannings, createPlanning, deletePlanning, initMockData } from '../services/storage';
+import * as api from '../services/api';
 import { Planning } from '../types';
 import { format, startOfWeek, parseISO, endOfWeek, isMonday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -12,6 +13,7 @@ const Dashboard: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterService, setFilterService] = useState<'Tout' | 'Salle' | 'Cuisine'>('Tout');
   const [sortAsc, setSortAsc] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
   // New Planning Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -24,6 +26,12 @@ const Dashboard: React.FC = () => {
         // await initMockData(); // Suppression seed automatique
         const data = await getPlannings();
         setPlannings(Array.isArray(data) ? data : []);
+        
+        // Charger le nom de l'entreprise
+        const company = await api.getSetting('company_name');
+        if (typeof company === 'string' && company.length > 0) {
+          setCompanyName(company);
+        }
       } catch (err) {
         console.error('Failed to load data:', err);
         setPlannings([]);
@@ -121,7 +129,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-brand text-white p-2 rounded-lg">
               <Calendar size={24} />
             </div>
-            <h1 className="text-xl font-bold text-brand tracking-tight">Planning Polpo</h1>
+            <h1 className="text-xl font-bold text-brand tracking-tight">Planning {companyName}</h1>
           </div>
 
           <div className="flex items-center gap-4">

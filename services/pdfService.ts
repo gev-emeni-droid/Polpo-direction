@@ -1,7 +1,8 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Planning, Template, ABSENCE_TYPES, PlanningRow, getRoleIndex } from '../types';
+import * as api from './api';
+import { Planning, Template, ABSENCE_TYPES, PlanningRow } from '../types';
 import { format, parseISO, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -10,6 +11,7 @@ interface ExportOptions {
     period: 'WEEK' | 'DAY';
     selectedDay: string;
     columns: {
+        horaire: boolean;
         arrival: boolean;
         departure: boolean;
         signature: boolean;
@@ -19,6 +21,7 @@ interface ExportOptions {
         text: string;
     };
     roleLabels?: Record<string, string>;
+    companyName?: string;
 }
 
 export const generatePDF = (planning: Planning, templates: Template[], options: ExportOptions) => {
@@ -77,12 +80,17 @@ const generateDayPDF = (planning: Planning, templates: Template[], options: Expo
         const subtitleWidth = doc.getTextWidth(subtitle);
         doc.text(subtitle, (PAGE_WIDTH - subtitleWidth) / 2, 12);
 
-        const headRow = ['Employé', 'Horaires'];
-        let colIndex = 2;
+        const headRow = ['Employé'];
+        let colIndex = 1;
         const columnStyles: any = {
             0: { cellWidth: 47, fontStyle: 'bold' }, // Nom
-            1: { cellWidth: 34, halign: 'center' },  // Horaires
         };
+
+        if (options.columns.horaire) {
+            headRow.push('Horaires');
+            columnStyles[colIndex] = { cellWidth: 34, halign: 'center' };
+            colIndex++;
+        }
 
         if (options.columns.arrival) {
             headRow.push('Arrivée');
@@ -326,7 +334,11 @@ const generateDayPDF = (planning: Planning, templates: Template[], options: Expo
                 }
             }
 
-            const rowData = [row.employeeName, cellContent];
+            const rowData = [row.employeeName];
+            
+            if (options.columns.horaire) {
+                rowData.push(cellContent);
+            }
 
             // Handle arrival column - show AA here if present
             if (options.columns.arrival) {
@@ -475,8 +487,9 @@ const generateDayPDF = (planning: Planning, templates: Template[], options: Expo
 
 export const generatePlanningPDF = (planning: Planning, templates: Template[], options: ExportOptions) => {
     const doc = new jsPDF('landscape');
+    const companyName = options.companyName || 'Planning';
     doc.setFontSize(18);
-    doc.text(`Planning Polpo - ${planning.service}`, 14, 15);
+    doc.text(`Planning ${companyName} - ${planning.service}`, 14, 15);
     doc.setFontSize(11);
     doc.setTextColor(100);
     const start = format(parseISO(planning.weekStart), 'dd MMMM yyyy', { locale: fr });
@@ -573,6 +586,28 @@ export const generatePlanningPDF = (planning: Planning, templates: Template[], o
 
     bodyData.push([{ content: '', colSpan: 8, styles: { fillColor: [255, 255, 255], lineColor: [255, 255, 255] } }]);
     bodyData.push(kpiRow);
+
+    // Add Extras/Renforts section if any
+    if (planning.extraShifts && planning.extraShifts.length > 0) {
+        bodyData.push([{ content: '', colSpan: 8, styles: { fillColor: [255, 255, 255], lineColor: [255, 255, 255] } }]);
+        
+        // Get unique extra types
+        const extraTypes = Array.from(new Set(planning.extraShifts.map(e => e.label)));
+        
+        extraTypes.forEach(extraType => {
+            const extrasRow = [extraType];
+            weekDates.forEach(date => {
+                const extrasForType = planning.extraShifts!.filter(e => e.date === date && e.label === extraType);
+                if (extrasForType.length > 0) {
+                    const details = extrasForType.map(e => `${e.count}x ${e.start}-${e.end}`).join(', ');
+                    extrasRow.push(details);
+                } else {
+                    extrasRow.push('');
+                }
+            });
+            bodyData.push(extrasRow);
+        });
+    }
 
     const headerColorRgb = hexToRgb(options.colors?.header || '#C1D5AF');
     const textColorRgb = hexToRgb(options.colors?.text || '#000000');

@@ -3,18 +3,8 @@ export type ServiceType = 'Salle' | 'Cuisine';
 export type ShiftServiceType = 'midi' | 'soir' | 'midi+soir' | 'none';
 export type ShiftType = 'travail' | 'repos' | 'absence';
 
-export const STANDARD_ROLES = [
-  'COMMERCIAL + ADMIN',
-  'RUNNER',
-  'ACCUEIL',
-  'ENCADREMENT',
-  'BARMAN',
-  'CHEF DE RANG',
-  'PLAGE / RUNNER',
-  'APPRENTI'
-] as const;
-
 export const ABSENCE_TYPES = [
+  "Séléctionnez une ABS",
   "Ecole",
   "AA",
   "RN",
@@ -26,25 +16,7 @@ export const ABSENCE_TYPES = [
   "SUSPENDU",
   "RCF",
   "CP",
-  "HAB/DES",
-  "MISE A DISPO"
 ] as const;
-
-export const SORT_ROLE_ORDER = [
-  'ENCADREMENT',
-  'COMMERCIALE + ADMIN',
-  'APPRENTI',
-  'CHEF DE RANG',
-  'RUNNER',
-  'ACCUEIL',
-  'BARMAN',
-  'PLAGE / RUNNER'
-] as const;
-
-export const getRoleIndex = (roleId: string): number => {
-  const index = SORT_ROLE_ORDER.indexOf(roleId as any);
-  return index === -1 ? SORT_ROLE_ORDER.length : index;
-};
 
 export interface TimeSlot {
   start: string;

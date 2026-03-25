@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Settings, Users, Download, Plus, Search, ArrowLeft, Edit2, LogOut, Clock, Trash2, MoreHorizontal, Copy, Clipboard, Calculator, RefreshCw, FileText } from 'lucide-react';
 import { getPlannings, updatePlanning, getTemplates, getRoles, getEmployees } from '../services/storage';
-import { Planning, PlanningRow, Shift, Template, ExtraShift, ABSENCE_TYPES, ShiftSegment, ShiftType, ShiftServiceType, getRoleIndex } from '../types';
+import * as api from '../services/api';
+import { Planning, PlanningRow, Shift, Template, ExtraShift, ABSENCE_TYPES, ShiftSegment, ShiftType, ShiftServiceType } from '../types';
 import { format, parseISO, addDays, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import ShiftEditor from '../components/ShiftEditor';
@@ -38,6 +39,7 @@ const PlanningView: React.FC = () => {
   // Day Menu State
   const [openDayMenu, setOpenDayMenu] = useState<string | null>(null);
   const [clipboardDay, setClipboardDay] = useState<{ shifts: Record<string, Shift> } | null>(null);
+  const [companyName, setCompanyName] = useState('');
 
   const loadPlanningData = useCallback(async () => {
     try {
@@ -45,6 +47,12 @@ const PlanningView: React.FC = () => {
         const all = await getPlannings();
         let p = Array.isArray(all) ? all.find(x => x.id === id) : null;
         const loadedTemplates = await getTemplates();
+
+        // Charger le nom de l'entreprise
+        const company = await api.getSetting('company_name');
+        if (typeof company === 'string' && company.length > 0) {
+          setCompanyName(company);
+        }
 
         if (p) {
           // SYNC: Ensure planning reflects current employees
@@ -420,7 +428,7 @@ const PlanningView: React.FC = () => {
     const roles = await getRoles();
     const roleMap: Record<string, string> = {};
     roles.forEach(r => roleMap[r.id] = r.label);
-    generatePDF(planningToExport, templates, { ...options, roleLabels: roleMap });
+    generatePDF(planningToExport, templates, { ...options, roleLabels: roleMap, companyName });
   };
 
   const toggleRoleCollapse = (role: string) => {
