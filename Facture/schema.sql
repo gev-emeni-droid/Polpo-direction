@@ -41,10 +41,15 @@ CREATE TABLE invoices_history (
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-
 DROP TABLE IF EXISTS prestations;
 CREATE TABLE prestations (
   id INTEGER PRIMARY KEY,
   label TEXT NOT NULL
 );
 
+DROP TABLE IF EXISTS user_preferences;
+CREATE TABLE user_preferences (
+  id INTEGER PRIMARY KEY,
+  darkMode BOOLEAN DEFAULT 0,
+  invoicePageVisited BOOLEAN DEFAULT 0
+);

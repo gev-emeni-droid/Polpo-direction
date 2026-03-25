@@ -52,28 +52,24 @@ const InvoicePage: React.FC = () => {
     });
 
     const [prestations, setPrestations] = useState<string[]>(PREDEFINED_DESCRIPTIONS);
-    const [isDarkMode, setIsDarkMode] = useState(() => {
-        const saved = localStorage.getItem('darkMode');
-        return saved === 'true';
-    });
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [preferences, setPreferences] = useState({ darkMode: false, invoicePageVisited: false });
 
     // Load settings, data and prestations on mount
     useEffect(() => {
         const fetchData = async () => {
-            // 1. Settings
+            // 1. Load user preferences from DB
+            const prefs = await api.preferences.get();
+            setPreferences(prefs);
+            setIsDarkMode(prefs.darkMode);
+
+            // 2. Settings
             const savedSettings = await api.settings.get();
             if (savedSettings) {
                 setSettings(savedSettings);
-            } else {
-                // Only open settings modal on first visit
-                const hasVisited = localStorage.getItem('invoicePageVisited');
-                if (!hasVisited) {
-                    setIsSettingsOpen(true);
-                    localStorage.setItem('invoicePageVisited', 'true');
-                }
             }
 
-            // 2. Prestations
+            // 3. Prestations
             try {
                 const prests = await api.prestations.list();
                 if (prests && prests.length > 0) {
@@ -83,7 +79,7 @@ const InvoicePage: React.FC = () => {
                 console.error("Failed to load prestations", e);
             }
 
-            // 3. Invoice Data
+            // 4. Invoice Data
             const savedInvoice = await api.invoice.get();
             if (savedInvoice) {
                 // Migration: If no items but has legacy fields, create item
@@ -115,14 +111,28 @@ const InvoicePage: React.FC = () => {
                     invoiceNumber: generateInvoiceNumber()
                 }));
             }
+
+            // Mark as visited
+            if (!prefs.invoicePageVisited) {
+                await api.preferences.save({
+                    darkMode: false,
+                    invoicePageVisited: true
+                });
+            }
         };
         fetchData();
     }, []);
 
-    // Persist dark mode preference
+    // Persist dark mode preference to DB
     useEffect(() => {
-        localStorage.setItem('darkMode', isDarkMode.toString());
-    }, [isDarkMode]);
+        const timer = setTimeout(() => {
+            api.preferences.save({
+                darkMode: isDarkMode,
+                invoicePageVisited: preferences.invoicePageVisited
+            });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [isDarkMode, preferences]);
 
     // Auto-save invoice data
     useEffect(() => {

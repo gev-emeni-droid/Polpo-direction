@@ -1,4 +1,5 @@
 
+
 import { RestaurantSettings, InvoiceData } from '../src/features/invoice/types';
 
 export const api = {
@@ -97,6 +98,25 @@ export const api = {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, label })
+            });
+        }
+    },
+    preferences: {
+        get: async (): Promise<{ darkMode: boolean; invoicePageVisited: boolean }> => {
+            try {
+                const res = await fetch('/api/invoice/preferences');
+                if (!res.ok) throw new Error('Failed to fetch preferences');
+                return await res.json();
+            } catch (e) {
+                console.error(e);
+                return { darkMode: false, invoicePageVisited: false };
+            }
+        },
+        save: async (preferences: { darkMode: boolean; invoicePageVisited: boolean }) => {
+            await fetch('/api/invoice/preferences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(preferences)
             });
         }
     }
