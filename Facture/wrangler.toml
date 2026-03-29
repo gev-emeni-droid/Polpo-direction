@@ -3,5 +3,5 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "facture-db"
-database_id = "29423ee1-e523-46df-bd81-791b6195fcda"
+database_name = "facture-test"
+database_id = "c4cb9753-9a2b-41a9-8eef-abb6d510bb39"

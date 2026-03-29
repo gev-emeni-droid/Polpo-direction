@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/api': {
-            target: 'https://polpo-direction.pages.dev',
+            target: 'https://planning-test.pages.dev',
             changeOrigin: true,
             secure: true,
           }

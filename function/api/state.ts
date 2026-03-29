@@ -12,9 +12,9 @@ function jsonResponse(data: any, status = 200) {
 export async function onRequestGet(context: any) {
   const { env } = context;
 
-  const db = env['polpo-direction'];
+  const db = env.DB;
   if (!db) {
-    return jsonResponse({ error: 'D1 polpo-direction non disponible' }, 500);
+    return jsonResponse({ error: 'D1 DB non disponible' }, 500);
   }
 
   // Crée la table si elle n'existe pas
@@ -54,9 +54,9 @@ export async function onRequestGet(context: any) {
 export async function onRequestPost(context: any) {
   const { request, env } = context;
 
-  const db = env['polpo-direction'];
+  const db = env.DB;
   if (!db) {
-    return jsonResponse({ error: 'D1 polpo-direction non disponible' }, 500);
+    return jsonResponse({ error: 'D1 DB non disponible' }, 500);
   }
 
   let body: any;

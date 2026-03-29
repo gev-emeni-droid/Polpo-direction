@@ -1,4 +1,4 @@
-const API_URL = "https://direction-maj.polpo-direction.pages.dev/api";
+const API_URL = "https://planning-test.pages.dev/api";
 
 async function testPersistence() {
     console.log("Starting Persistence Test...");
