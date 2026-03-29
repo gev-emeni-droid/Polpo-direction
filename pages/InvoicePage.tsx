@@ -348,9 +348,9 @@ const InvoicePage: React.FC = () => {
                 <HistoryPage onBack={() => setIsHistoryView(false)} isDarkMode={isDarkMode} />
             ) : (
                 <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="grid grid-cols-1 2xl:grid-cols-12 gap-8">
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                         {/* Editor Left Column */}
-                        <div className="2xl:col-span-4 no-print order-2 2xl:order-1">
+                        <div className="xl:col-span-4 no-print">
                             <InvoiceForm
                                 data={invoiceData}
                                 onChange={setInvoiceData}
@@ -361,7 +361,7 @@ const InvoicePage: React.FC = () => {
                         </div>
 
                         {/* Preview Right Column */}
-                        <div className="2xl:col-span-8 flex flex-col items-center order-1 2xl:order-2 overflow-x-auto pb-8 print:overflow-visible print:block print:h-auto print:p-0">
+                        <div className="xl:col-span-8 flex flex-col items-center overflow-x-auto pb-8 print:overflow-visible print:block print:h-auto print:p-0">
                             <div className="no-print mb-4 w-full max-w-[210mm] flex justify-between items-center px-2">
                                 <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Aperçu</span>
                                 <span></span>
