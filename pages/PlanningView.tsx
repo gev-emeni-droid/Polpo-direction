@@ -27,6 +27,8 @@ const PlanningView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'SEMAINE' | 'JOUR'>('SEMAINE');
   const [selectedDayIndex, setSelectedDayIndex] = useState(0); // 0 = Monday
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Permet de forcer le reload des rôles après modification dans les paramètres
+  const [rolesRefreshKey, setRolesRefreshKey] = useState(0);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -196,11 +198,16 @@ const PlanningView: React.FC = () => {
     } catch (err) {
       console.error('Failed to load planning data:', err);
     }
-  }, [id, navigate]);
+  }, [id, navigate, rolesRefreshKey]);
 
   useEffect(() => {
     loadPlanningData();
   }, [loadPlanningData, isSettingsOpen, editingEmployee]);
+
+  // Callback pour forcer le refresh des rôles après modification dans les paramètres
+  const handleDataChanged = () => {
+    setRolesRefreshKey(k => k + 1);
+  };
 
   const savePlanning = async (updated: Planning) => {
     if (planning?.status === 'archived') {
@@ -873,7 +880,7 @@ const PlanningView: React.FC = () => {
         )}
       </main>
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onDataChanged={loadPlanningData} onThemeChanged={applyTheme} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onDataChanged={handleDataChanged} onThemeChanged={applyTheme} />
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onConfirm={handleExportConfirm} weekDates={weekStartDates} />
       {!isPlanningArchived && <AddShiftModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} weekStart={planning.weekStart} weekDates={weekStartDates} onSave={handleAddShiftData} onSuccess={loadPlanningData} />}
       {!isPlanningArchived && editingEmployee && <EditEmployeeModal isOpen={true} employeeId={editingEmployee.id} initialName={editingEmployee.name} initialRoleId={templates.find(t => t.role === editingEmployee.role)?.role || editingEmployee.role} onClose={() => setEditingEmployee(null)} />}
