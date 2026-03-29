@@ -617,17 +617,15 @@ const PlanningView: React.FC = () => {
     return { midi, soir, extras: dayExtras };
   };
 
+  // groupedRows est maintenant un tableau ordonné pour garantir l’ordre d’affichage
   const groupedRows = useMemo(() => {
-    if (!planning) return {};
+    if (!planning) return [];
 
     // Filtrer les employés correspondant à la recherche
     const filtered = planning.rows.filter(r =>
       r.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getRoleLabel(r.employeeRole).toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    // Sort alphabetically by name
-    filtered.sort((a, b) => a.employeeName.localeCompare(b.employeeName));
 
     // Créer les groupes seulement avec les employés filtrés
     const groups: Record<string, PlanningRow[]> = {};
@@ -637,22 +635,18 @@ const PlanningView: React.FC = () => {
       groups[g].push(r);
     });
 
-    // Sort groups by dynamic roles list, but respecting ROLE_ORDER preferences
-    const sortedGroups: Record<string, PlanningRow[]> = {};
-
-    // Utiliser l'ordre du tableau roles (déjà personnalisé)
+    // Construire un tableau ordonné selon l’ordre des rôles configuré
+    const ordered: Array<[string, PlanningRow[]]> = [];
     roles.forEach(role => {
-      sortedGroups[role.id] = groups[role.id] || [];
+      ordered.push([role.id, groups[role.id] || []]);
     });
-
-    // 2. Add any groups that exist in rows but weren't in the roles list (legacy or deleted roles)
+    // Ajouter les groupes qui ne sont pas dans la config (legacy)
     Object.keys(groups).forEach(roleId => {
-      if (!sortedGroups[roleId]) {
-        sortedGroups[roleId] = groups[roleId];
+      if (!roles.find(r => r.id === roleId)) {
+        ordered.push([roleId, groups[roleId]]);
       }
     });
-
-    return sortedGroups;
+    return ordered;
   }, [planning, searchTerm, roles]);
 
   const getGroupTotals = (rows: PlanningRow[], date: string) => {
@@ -854,7 +848,7 @@ const PlanningView: React.FC = () => {
                 <div className="text-sm text-slate-500">Effectif: <strong className="text-slate-800">{getKPIs(weekStartDates[selectedDayIndex]).midi + getKPIs(weekStartDates[selectedDayIndex]).soir}</strong> shifts</div>
               </div>
               <div className="divide-y">
-                {Object.entries(groupedRows).map(([role, untypedRows]) => {
+                {groupedRows.map(([role, untypedRows]) => {
                   // Trie dynamiquement les employés du groupe selon l’ordre des rôles et le nom
                   const rows = getSortedRows(untypedRows as PlanningRow[]);
                   return (
