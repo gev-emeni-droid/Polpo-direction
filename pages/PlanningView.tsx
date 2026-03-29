@@ -159,20 +159,34 @@ const PlanningView: React.FC = () => {
             const roleOrder = new Map(effectiveRoles.map((role, index) => [role.id, index]));
             const getRoleRank = (roleId: string) => roleOrder.has(roleId) ? (roleOrder.get(roleId) as number) : Number.MAX_SAFE_INTEGER;
 
-            newRows.sort((a, b) => {
+            const sortedRows = [...newRows].sort((a, b) => {
               const roleIndexA = getRoleRank(a.employeeRole);
               const roleIndexB = getRoleRank(b.employeeRole);
               if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
               return a.employeeName.localeCompare(b.employeeName);
             });
 
-            if (hasChanges) {
-              p = { ...p, rows: newRows };
+            const orderChanged =
+              sortedRows.length !== p.rows.length ||
+              sortedRows.some((row, index) => p.rows[index]?.employeeId !== row.employeeId);
+
+            if (hasChanges || orderChanged) {
+              p = { ...p, rows: sortedRows };
               await updatePlanning(p);
             }
           }
 
-          setPlanning(p);
+          // Always apply role-based sorting for display.
+          const roleOrder = new Map(effectiveRoles.map((role, index) => [role.id, index]));
+          const getRoleRank = (roleId: string) => roleOrder.has(roleId) ? (roleOrder.get(roleId) as number) : Number.MAX_SAFE_INTEGER;
+          const displayRows = [...p.rows].sort((a, b) => {
+            const roleIndexA = getRoleRank(a.employeeRole);
+            const roleIndexB = getRoleRank(b.employeeRole);
+            if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
+            return a.employeeName.localeCompare(b.employeeName);
+          });
+
+          setPlanning({ ...p, rows: displayRows });
         } else {
           navigate('/');
         }
