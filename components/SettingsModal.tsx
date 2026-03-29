@@ -730,6 +730,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
                       setRoles(newRoles);
                       try {
                         await saveRoles(newRoles);
+                        onDataChanged?.();
                       } catch (err) {
                         console.error('Erreur lors de la sauvegarde de l\'ordre:', err);
                       }

@@ -6,61 +6,14 @@ import * as api from './api';
 // --- ROLES ---
 
 export const getRoles = async () => {
-  let roles = await api.listRoles();
-  const rolesMap = new Map(roles.map(r => [r.id, r]));
+  const roles = await api.listRoles();
 
   // Get blacklist to prevent resurrection of deleted roles
   const blacklist = await getDeletedRolesBlacklist();
   const blacklistSet = new Set(blacklist);
 
-  // Roles are now fully configurable by each client - no hardcoded defaults
-
-  // Collect all roles actually used by employees and templates
-  const usedRoles = new Set<string>();
-  const restoredRoles: { id: string, label: string }[] = [];
-
-  try {
-    const employees = await api.listEmployees();
-    if (Array.isArray(employees)) {
-      for (const emp of employees) {
-        if (emp.role) {
-          usedRoles.add(emp.role);
-          // Only restore if NOT blacklisted
-          if (!rolesMap.has(emp.role) && !blacklistSet.has(emp.role)) {
-            const newRole = { id: emp.role, label: emp.role };
-            await api.saveRole(newRole);
-            rolesMap.set(emp.role, newRole);
-            restoredRoles.push(newRole);
-          }
-        }
-      }
-    }
-
-    const templates = await api.listTemplates();
-    if (Array.isArray(templates)) {
-      for (const tpl of templates) {
-        if (tpl.role && tpl.role !== 'GÉNÉRAL') {
-          usedRoles.add(tpl.role);
-          // Only restore if NOT blacklisted
-          if (!rolesMap.has(tpl.role) && !blacklistSet.has(tpl.role)) {
-            const newRole = { id: tpl.role, label: tpl.role };
-            await api.saveRole(newRole);
-            rolesMap.set(tpl.role, newRole);
-            restoredRoles.push(newRole);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Failed to sync roles from employees/templates:', err);
-  }
-
-  // IMPORTANT: Keep the order from the backend (returned by api.listRoles())
-  // Only add restored roles at the end (don't reorder existing ones)
-  const activeRoles = roles.filter(r => rolesMap.has(r.id) && !blacklistSet.has(r.id));
-  const newRestoredRoles = restoredRoles.filter(r => !blacklistSet.has(r.id));
-  
-  return [...activeRoles, ...newRestoredRoles];
+  // Source of truth: only roles configured in settings/API order.
+  return Array.isArray(roles) ? roles.filter(r => !blacklistSet.has(r.id)) : [];
 };
 
 export const saveRoles = async (roles: { id: string, label: string }[]) => {
@@ -287,6 +240,8 @@ export const deleteEmployee = async (id: string) => {
   const planningUpdates = [];
 
   for (const p of plannings) {
+    if (p.status === 'archived') continue;
+
     const originalRowCount = p.rows.length;
     const newRows = p.rows.filter(row =>
       !duplicateIds.includes(row.employeeId) &&
@@ -314,6 +269,8 @@ export const updateEmployeeDetails = async (id: string, name: string, role: stri
   // 2. Cascade Update to ALL Plannings (Rows)
   const plannings = await getPlannings();
   for (const p of plannings) {
+    if (p.status === 'archived') continue;
+
     const rowIdx = p.rows.findIndex(r => r.employeeId === id);
     if (rowIdx !== -1) {
       const updatedRows = [...p.rows];
@@ -438,6 +395,8 @@ export const updateTemplate = async (updated: Template) => {
   const planningUpdates = [];
 
   plannings.forEach(p => {
+    if (p.status === 'archived') return;
+
     let rowChanged = false;
     const newRows = p.rows.map(row => {
       let shiftChanged = false;
@@ -823,6 +782,11 @@ export const createPlanning = async (inputDate: Date, service: 'Salle' | 'Cuisin
 };
 
 export const updatePlanning = async (updated: Planning) => {
+  const current = await api.getPlanning(updated.id);
+  if (current?.status === 'archived') {
+    throw new Error('Ce planning est archivé et ne peut plus être modifié.');
+  }
+
   await api.savePlanning(updated);
 };
 

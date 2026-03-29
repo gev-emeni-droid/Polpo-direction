@@ -40,9 +40,14 @@ const PlanningView: React.FC = () => {
   const [openDayMenu, setOpenDayMenu] = useState<string | null>(null);
   const [clipboardDay, setClipboardDay] = useState<{ shifts: Record<string, Shift> } | null>(null);
   const [companyName, setCompanyName] = useState('');
+  const isPlanningArchived = planning?.status === 'archived';
 
   const loadPlanningData = useCallback(async () => {
     try {
+      const rolesData = await getRoles();
+      const effectiveRoles = Array.isArray(rolesData) ? rolesData : [];
+      setRoles(effectiveRoles);
+
       if (id) {
         const all = await getPlannings();
         let p = Array.isArray(all) ? all.find(x => x.id === id) : null;
@@ -55,111 +60,116 @@ const PlanningView: React.FC = () => {
         }
 
         if (p) {
-          // SYNC: Ensure planning reflects current employees
-          const employees = await getEmployees();
-          const activeEmployees = employees.filter(e => e.isActive);
-          let hasChanges = false;
-          let newRows = [...p.rows];
+          if (p.status !== 'archived') {
+            // SYNC: Ensure active planning reflects current employees
+            const employees = await getEmployees();
+            const activeEmployees = employees.filter(e => e.isActive);
+            let hasChanges = false;
+            let newRows = [...p.rows];
 
-          // 1. Update existing rows with latest employee details AND remove deleted employees
-          const activeEmployeeIds = new Set(activeEmployees.map(e => e.id));
+            // 1. Update existing rows with latest employee details AND remove deleted employees
+            const activeEmployeeIds = new Set(activeEmployees.map(e => e.id));
 
-          // Filter out rows for employees that no longer exist or are inactive
-          const filteredRows = newRows.filter(row => activeEmployeeIds.has(row.employeeId));
+            // Filter out rows for employees that no longer exist or are inactive
+            const filteredRows = newRows.filter(row => activeEmployeeIds.has(row.employeeId));
 
-          if (filteredRows.length !== newRows.length) {
-            hasChanges = true;
-            newRows = filteredRows;
-          }
-
-          newRows = newRows.map(row => {
-            const emp = employees.find(e => e.id === row.employeeId);
-            if (emp) {
-              if (row.employeeName !== emp.name || row.employeeRole !== emp.role) {
-                hasChanges = true;
-                return { ...row, employeeName: emp.name, employeeRole: emp.role };
-              }
-            }
-            return row;
-          });
-
-          // 2. Add missing active employees
-          const weekStart = parseISO(p.weekStart);
-          activeEmployees.forEach(emp => {
-            if (!newRows.find(r => r.employeeId === emp.id)) {
+            if (filteredRows.length !== newRows.length) {
               hasChanges = true;
-              const shifts: Record<string, any> = {};
+              newRows = filteredRows;
+            }
 
-              for (let i = 0; i < 7; i++) {
-                const dateObj = addDays(weekStart, i);
-                const d = format(dateObj, 'yyyy-MM-dd');
+            newRows = newRows.map(row => {
+              const emp = employees.find(e => e.id === row.employeeId);
+              if (emp) {
+                if (row.employeeName !== emp.name || row.employeeRole !== emp.role) {
+                  hasChanges = true;
+                  return { ...row, employeeName: emp.name, employeeRole: emp.role };
+                }
+              }
+              return row;
+            });
 
-                // --- APPLY WEEKLY DEFAULT ---
-                const defaultTplId = emp.weeklyDefault?.[i.toString()];
-                let newSegments: ShiftSegment[] = [];
-                let type: ShiftType = 'repos';
-                let serviceType: ShiftServiceType = 'none';
+            // 2. Add missing active employees
+            const weekStart = parseISO(p.weekStart);
+            activeEmployees.forEach(emp => {
+              if (!newRows.find(r => r.employeeId === emp.id)) {
+                hasChanges = true;
+                const shifts: Record<string, any> = {};
 
-                if (defaultTplId && defaultTplId !== 'repos') {
-                  const tpl = loadedTemplates.find(t => t.id === defaultTplId);
-                  if (tpl) {
-                    type = 'travail';
-                    // Recalculate serviceType based on actual slot times
-                    const firstStart = tpl.slots[0]?.start;
-                    const lastEnd = tpl.slots[tpl.slots.length - 1]?.end;
-                    if (firstStart) {
-                      if (firstStart < "12:00") {
-                        serviceType = lastEnd && lastEnd > "18:00" ? 'midi+soir' : 'midi';
-                      } else if (firstStart >= "16:00") {
-                        serviceType = 'soir';
-                      } else {
-                        serviceType = lastEnd && lastEnd > "18:00" ? 'soir' : 'midi';
+                for (let i = 0; i < 7; i++) {
+                  const dateObj = addDays(weekStart, i);
+                  const d = format(dateObj, 'yyyy-MM-dd');
+
+                  // --- APPLY WEEKLY DEFAULT ---
+                  const defaultTplId = emp.weeklyDefault?.[i.toString()];
+                  let newSegments: ShiftSegment[] = [];
+                  let type: ShiftType = 'repos';
+                  let serviceType: ShiftServiceType = 'none';
+
+                  if (defaultTplId && defaultTplId !== 'repos') {
+                    const tpl = loadedTemplates.find(t => t.id === defaultTplId);
+                    if (tpl) {
+                      type = 'travail';
+                      // Recalculate serviceType based on actual slot times
+                      const firstStart = tpl.slots[0]?.start;
+                      const lastEnd = tpl.slots[tpl.slots.length - 1]?.end;
+                      if (firstStart) {
+                        if (firstStart < "12:00") {
+                          serviceType = lastEnd && lastEnd > "18:00" ? 'midi+soir' : 'midi';
+                        } else if (firstStart >= "16:00") {
+                          serviceType = 'soir';
+                        } else {
+                          serviceType = lastEnd && lastEnd > "18:00" ? 'soir' : 'midi';
+                        }
                       }
+                      newSegments = tpl.slots.map(slot => ({
+                        type: 'horaire',
+                        start: slot.start,
+                        end: slot.end,
+                        templateId: tpl.id,
+                        color: tpl.color,
+                        hasOverride: false
+                      }));
+                    } else {
+                      newSegments = [{ type: 'code', label: 'REPOS' }];
                     }
-                    newSegments = tpl.slots.map(slot => ({
-                      type: 'horaire',
-                      start: slot.start,
-                      end: slot.end,
-                      templateId: tpl.id,
-                      color: tpl.color,
-                      hasOverride: false
-                    }));
                   } else {
                     newSegments = [{ type: 'code', label: 'REPOS' }];
                   }
-                } else {
-                  newSegments = [{ type: 'code', label: 'REPOS' }];
+
+                  shifts[d] = {
+                    date: d,
+                    type,
+                    serviceType,
+                    segments: newSegments
+                  };
                 }
 
-                shifts[d] = {
-                  date: d,
-                  type,
-                  serviceType,
-                  segments: newSegments
-                };
+                newRows.push({
+                  employeeId: emp.id,
+                  employeeName: emp.name,
+                  employeeRole: emp.role,
+                  isExtra: false,
+                  shifts
+                });
               }
+            });
 
-              newRows.push({
-                employeeId: emp.id,
-                employeeName: emp.name,
-                employeeRole: emp.role,
-                isExtra: false,
-                shifts
-              });
+            // Trier les rows selon l'ordre personnalisé des rôles
+            const roleOrder = new Map(effectiveRoles.map((role, index) => [role.id, index]));
+            const getRoleRank = (roleId: string) => roleOrder.has(roleId) ? (roleOrder.get(roleId) as number) : Number.MAX_SAFE_INTEGER;
+
+            newRows.sort((a, b) => {
+              const roleIndexA = getRoleRank(a.employeeRole);
+              const roleIndexB = getRoleRank(b.employeeRole);
+              if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
+              return a.employeeName.localeCompare(b.employeeName);
+            });
+
+            if (hasChanges) {
+              p = { ...p, rows: newRows };
+              await updatePlanning(p);
             }
-          });
-
-          // Trier les rows selon l'ordre personnalisé des rôles
-          newRows.sort((a, b) => {
-            const roleIndexA = roles.findIndex(r => r.id === a.employeeRole);
-            const roleIndexB = roles.findIndex(r => r.id === b.employeeRole);
-            if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
-            return a.employeeName.localeCompare(b.employeeName);
-          });
-
-          if (hasChanges) {
-            p = { ...p, rows: newRows };
-            await updatePlanning(p);
           }
 
           setPlanning(p);
@@ -169,10 +179,6 @@ const PlanningView: React.FC = () => {
       }
       const tmpls = await getTemplates();
       setTemplates(Array.isArray(tmpls) ? tmpls : []);
-
-      const rolesData = await getRoles();
-      console.log('Roles loaded:', rolesData);
-      setRoles(Array.isArray(rolesData) ? rolesData : []);
     } catch (err) {
       console.error('Failed to load planning data:', err);
     }
@@ -183,6 +189,11 @@ const PlanningView: React.FC = () => {
   }, [loadPlanningData, isSettingsOpen, editingEmployee]);
 
   const savePlanning = async (updated: Planning) => {
+    if (planning?.status === 'archived') {
+      alert('Ce planning est archivé: modification impossible.');
+      return;
+    }
+
     try {
       await updatePlanning(updated);
       setPlanning(updated);
@@ -638,6 +649,11 @@ const PlanningView: React.FC = () => {
                 <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                   Semaine du {format(parseISO(planning.weekStart), 'dd/MM')}
                 </span>
+                {isPlanningArchived && (
+                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                    ARCHIVE - LECTURE SEULE
+                  </span>
+                )}
               </h1>
             </div>
           </div>
@@ -650,9 +666,9 @@ const PlanningView: React.FC = () => {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input className="pl-8 pr-3 py-1.5 text-sm bg-slate-100 border-transparent focus:bg-white border focus:border-brand/30 rounded-lg outline-none w-48 transition-all" placeholder="Filtrer employé..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
-            <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-1 bg-brand text-white hover:opacity-90 px-4 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-colors"><Plus size={16} /> Ajouter</button>
+            <button disabled={isPlanningArchived} onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-1 bg-brand text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-colors"><Plus size={16} /> Ajouter</button>
             <button onClick={() => navigate('/facture')} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Factures"><FileText size={20} /></button>
-            <button onClick={handleResetWeek} className="p-2 text-slate-500 hover:bg-slate-100 hover:text-orange-600 rounded-lg" title="Réinitialiser la Semaine (Défauts)"><RefreshCw size={20} /></button>
+            <button disabled={isPlanningArchived} onClick={handleResetWeek} className="p-2 text-slate-500 hover:bg-slate-100 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg" title="Réinitialiser la Semaine (Défauts)"><RefreshCw size={20} /></button>
             <button onClick={() => setIsExportModalOpen(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Export PDF"><Download size={20} /></button>
 
             <button onClick={() => setIsSettingsOpen(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Paramètres"><Settings size={20} /></button>
@@ -708,7 +724,7 @@ const PlanningView: React.FC = () => {
                       <th key={d} className="sticky top-0 z-40 border-b border-r bg-slate-50 p-2 min-w-[140px] text-center font-medium text-slate-800 shadow-sm relative group">
                         <div className="flex items-center justify-center gap-2">
                           <span>{DAYS[i]}</span>
-                          <button onClick={(e) => { e.stopPropagation(); setOpenDayMenu(openDayMenu === d ? null : d); }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-opacity">
+                          <button disabled={isPlanningArchived} onClick={(e) => { e.stopPropagation(); setOpenDayMenu(openDayMenu === d ? null : d); }} className="opacity-0 group-hover:opacity-100 disabled:opacity-20 p-1 hover:bg-slate-200 rounded transition-opacity">
                             <MoreHorizontal size={14} />
                           </button>
                         </div>
@@ -716,14 +732,14 @@ const PlanningView: React.FC = () => {
 
                         {openDayMenu === d && (
                           <div className="absolute top-full right-0 mt-1 bg-white border border-slate-200 shadow-lg rounded-lg py-1 z-50 w-40 text-left">
-                            <button onClick={() => handleCopyDay(d)} className="w-full px-4 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                            <button disabled={isPlanningArchived} onClick={() => handleCopyDay(d)} className="w-full px-4 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                               <Copy size={12} /> Copier la journée
                             </button>
-                            <button onClick={() => handlePasteDay(d)} disabled={!clipboardDay} className="w-full px-4 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-700 disabled:opacity-50">
+                            <button onClick={() => handlePasteDay(d)} disabled={!clipboardDay || isPlanningArchived} className="w-full px-4 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                               <Clipboard size={12} /> Coller la journée
                             </button>
                             <div className="border-t border-slate-100 my-1"></div>
-                            <button onClick={() => handleClearDay(d)} className="w-full px-4 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600">
+                            <button disabled={isPlanningArchived} onClick={() => handleClearDay(d)} className="w-full px-4 py-2 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600 disabled:opacity-50 disabled:cursor-not-allowed">
                               <Trash2 size={12} /> Vider la journée
                             </button>
                           </div>
@@ -755,11 +771,12 @@ const PlanningView: React.FC = () => {
                                     <span>{row.employeeName}</span>
                                     {totalWeeklyStr && <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 mt-0.5"><Clock size={10} /> {totalWeeklyStr}</span>}
                                   </div>
-                                  <button onClick={(e) => { e.stopPropagation(); setEditingEmployee({ id: row.employeeId, name: row.employeeName, role: row.employeeRole }); }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-blue-600 transition-opacity"><Edit2 size={14} /></button>
+                                  <button disabled={isPlanningArchived} onClick={(e) => { e.stopPropagation(); setEditingEmployee({ id: row.employeeId, name: row.employeeName, role: row.employeeRole }); }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-20 transition-opacity"><Edit2 size={14} /></button>
                                 </div>
                               </td>
                               {weekStartDates.map(date => (
-                                <td key={date} className="border-b border-r p-1 h-16 relative group cursor-pointer" onClick={(e) => {
+                                <td key={date} className={`border-b border-r p-1 h-16 relative group ${isPlanningArchived ? 'cursor-not-allowed' : 'cursor-pointer'}`} onClick={(e) => {
+                                  if (isPlanningArchived) return;
                                   const rect = e.currentTarget.getBoundingClientRect();
                                   setEditorPos({ x: rect.left, y: rect.bottom + window.scrollY });
                                   setEditingShift({ shift: row.shifts[date] || { date, type: 'repos', serviceType: 'none', segments: [] }, employeeId: row.employeeId, employeeName: row.employeeName, employeeRole: row.employeeRole, date });
@@ -817,7 +834,8 @@ const PlanningView: React.FC = () => {
                         const shift = row.shifts[weekStartDates[selectedDayIndex]];
                         const dailyStr = formatDuration(calculateShiftDuration(shift));
                         return (
-                          <div key={row.employeeId} className="px-4 py-4 flex items-center justify-between hover:bg-brand-light/30 cursor-pointer border-b last:border-0" onClick={(e) => {
+                          <div key={row.employeeId} className={`px-4 py-4 flex items-center justify-between hover:bg-brand-light/30 border-b last:border-0 ${isPlanningArchived ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`} onClick={(e) => {
+                            if (isPlanningArchived) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             setEditorPos({ x: rect.left + 100, y: rect.bottom + window.scrollY });
                             setEditingShift({ shift, employeeId: row.employeeId, employeeName: row.employeeName, employeeRole: row.employeeRole, date: weekStartDates[selectedDayIndex] });
@@ -843,10 +861,10 @@ const PlanningView: React.FC = () => {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} onDataChanged={loadPlanningData} onThemeChanged={applyTheme} />
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onConfirm={handleExportConfirm} weekDates={weekStartDates} />
-      <AddShiftModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} weekStart={planning.weekStart} weekDates={weekStartDates} onSave={handleAddShiftData} onSuccess={loadPlanningData} />
-      {editingEmployee && <EditEmployeeModal isOpen={true} employeeId={editingEmployee.id} initialName={editingEmployee.name} initialRoleId={templates.find(t => t.role === editingEmployee.role)?.role || editingEmployee.role} onClose={() => setEditingEmployee(null)} />}
+      {!isPlanningArchived && <AddShiftModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} weekStart={planning.weekStart} weekDates={weekStartDates} onSave={handleAddShiftData} onSuccess={loadPlanningData} />}
+      {!isPlanningArchived && editingEmployee && <EditEmployeeModal isOpen={true} employeeId={editingEmployee.id} initialName={editingEmployee.name} initialRoleId={templates.find(t => t.role === editingEmployee.role)?.role || editingEmployee.role} onClose={() => setEditingEmployee(null)} />}
 
-      {editingShift && (
+      {!isPlanningArchived && editingShift && (
         <ShiftEditor
           shift={editingShift.shift}
           employeeName={editingShift.employeeName}

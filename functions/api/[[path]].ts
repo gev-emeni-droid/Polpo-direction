@@ -426,6 +426,38 @@ function mergeRoles(stored: Role[], discovered: Map<string, string>): Role[] {
   return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, "fr"));
 }
 
+function dedupeRolesList(roles: Role[]): Role[] {
+  const map = new Map<string, Role>();
+
+  for (const role of roles) {
+    const rawId = String(role?.id ?? "").trim();
+    if (!rawId) continue;
+
+    const k = roleKey(rawId);
+    if (!k || BANNED_KEYS.has(k)) continue;
+
+    const normalizedLabel = String(role?.label ?? "").trim() || makeRoleLabel(rawId) || rawId;
+    const existing = map.get(k);
+
+    if (!existing) {
+      map.set(k, { id: rawId, label: normalizedLabel });
+      continue;
+    }
+
+    const nextId = preferRoleId(existing.id, rawId);
+    const existingLooksAuto = (existing.label || "") === (makeRoleLabel(existing.id) || existing.id);
+    const incomingLooksManual = normalizedLabel !== (makeRoleLabel(rawId) || rawId);
+    const nextLabel = incomingLooksManual || existingLooksAuto ? normalizedLabel : existing.label;
+
+    map.set(k, {
+      id: nextId,
+      label: nextLabel || makeRoleLabel(nextId) || nextId,
+    });
+  }
+
+  return Array.from(map.values());
+}
+
 function looksLikeRoleNameKey(k: string) {
   const key = String(k ?? "").trim();
   if (!key) return false;
@@ -623,6 +655,11 @@ async function handleObjectCollection(
     const pref = shouldCanonicalizeRoles ? await preferredRoleIdMap(db) : null;
 
     const idx = items.findIndex((x: any) => String(x?.id) === String(id));
+
+    if (kvKey === "polpo_plannings" && idx >= 0 && items[idx]?.status === "archived") {
+      return json({ error: "Archived planning is read-only" }, 403, corsReq);
+    }
+
     if (idx >= 0) {
       let merged: any = { ...items[idx], ...(body ?? {}), id };
       if (pref) merged = canonicalizeAllRoles(merged, pref);
@@ -638,6 +675,13 @@ async function handleObjectCollection(
   }
 
   if (req.method === "DELETE" && id) {
+    if (kvKey === "polpo_plannings") {
+      const existing = items.find((x: any) => String(x?.id) === String(id));
+      if (existing?.status === "archived") {
+        return json({ error: "Archived planning cannot be deleted" }, 403, corsReq);
+      }
+    }
+
     const next = items.filter((x: any) => String(x?.id) !== String(id));
     await writeBack(db, kvKey, shape, raw, next);
     return json({ ok: true }, 200, corsReq);
@@ -662,10 +706,14 @@ async function handleRolesOrder(db: D1Database, req: Request) {
       }
     }
 
-    // Save the roles in the new order
-    await kvSetJSON(db, "polpo_roles", roles);
+    const normalized = dedupeRolesList(
+      roles.map((role: any) => ({ id: String(role.id).trim(), label: String(role.label).trim() }))
+    );
 
-    return json({ ok: true, count: roles.length }, 200, req);
+    // Save de-duplicated roles in the new order
+    await kvSetJSON(db, "polpo_roles", normalized);
+
+    return json({ ok: true, count: normalized.length }, 200, req);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[handleRolesOrder Error]", msg, error);
@@ -678,7 +726,7 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
   const arr = normalizeToArray(raw);
   const isStringArray = arr.length === 0 || typeof arr[0] === "string";
 
-  const stored = normalizeRoles(raw).filter(r => !BANNED_KEYS.has(roleKey(r.id)));
+  const stored = dedupeRolesList(normalizeRoles(raw));
 
   const employees = await getCollection(db, "polpo_employees");
   const templates = await getCollection(db, "polpo_templates");
@@ -689,6 +737,15 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
 
   if (req.method === "GET" && !id) {
     // Return ONLY stored roles, NO auto-discovery
+    // Auto-heal storage when duplicates are detected.
+    const rawNormalized = normalizeRoles(raw);
+    if (JSON.stringify(rawNormalized) !== JSON.stringify(stored)) {
+      if (isStringArray) {
+        await kvSetJSON(db, "polpo_roles", stored.map((r) => r.id));
+      } else {
+        await kvSetJSON(db, "polpo_roles", stored);
+      }
+    }
     return json(stored, 200, req);
   }
 
@@ -711,7 +768,8 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
       const next = current.filter((s) => roleKey(s) !== targetKey);
       next.push(toStore);
 
-      await kvSetJSON(db, "polpo_roles", next);
+      const deduped = dedupeRolesList(next.map((idVal) => ({ id: String(idVal), label: makeRoleLabel(String(idVal)) || String(idVal) })));
+      await kvSetJSON(db, "polpo_roles", deduped.map((r) => r.id));
     } else {
       const list = normalizeRoles(raw);
       const idx = list.findIndex((r) => roleKey(r.id) === targetKey);
@@ -723,7 +781,7 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
       } else {
         list.push({ id: wantRaw, label: String(body?.label ?? makeRoleLabel(wantRaw)) });
       }
-      await kvSetJSON(db, "polpo_roles", list);
+      await kvSetJSON(db, "polpo_roles", dedupeRolesList(list));
     }
 
     return json({ ok: true }, 200, req);
@@ -742,13 +800,14 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
       const current = (arr as any[]).map(String);
       if (!current.includes(newId)) {
         current.push(newId);
-        await kvSetJSON(db, "polpo_roles", current);
+        const deduped = dedupeRolesList(current.map((idVal) => ({ id: String(idVal), label: makeRoleLabel(String(idVal)) || String(idVal) })));
+        await kvSetJSON(db, "polpo_roles", deduped.map((r) => r.id));
       }
     } else {
       const list = normalizeRoles(raw);
       if (!list.find(r => r.id === newId)) {
         list.push({ id: newId, label: newLabel });
-        await kvSetJSON(db, "polpo_roles", list);
+        await kvSetJSON(db, "polpo_roles", dedupeRolesList(list));
       }
     }
     return json({ ok: true }, 201, req);
@@ -760,10 +819,11 @@ async function handleRoles(db: D1Database, req: Request, id?: string) {
     if (isStringArray) {
       const current = (arr as any[]).map(String);
       const next = current.filter((s) => roleKey(s) !== targetKey);
-      await kvSetJSON(db, "polpo_roles", next);
+      const deduped = dedupeRolesList(next.map((idVal) => ({ id: String(idVal), label: makeRoleLabel(String(idVal)) || String(idVal) })));
+      await kvSetJSON(db, "polpo_roles", deduped.map((r) => r.id));
     } else {
       const next = normalizeRoles(raw).filter((r) => roleKey(r.id) !== targetKey);
-      await kvSetJSON(db, "polpo_roles", next);
+      await kvSetJSON(db, "polpo_roles", dedupeRolesList(next));
     }
     return json({ ok: true }, 200, req);
   }
