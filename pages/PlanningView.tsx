@@ -1,3 +1,14 @@
+  // Utilitaire pour trier dynamiquement les employés selon l’ordre des rôles
+  const getSortedRows = (rows: PlanningRow[]) => {
+    const roleOrder = new Map(roles.map((role, index) => [role.id, index]));
+    const getRoleRank = (roleId: string) => roleOrder.has(roleId) ? (roleOrder.get(roleId) as number) : Number.MAX_SAFE_INTEGER;
+    return [...rows].sort((a, b) => {
+      const roleIndexA = getRoleRank(a.employeeRole);
+      const roleIndexB = getRoleRank(b.employeeRole);
+      if (roleIndexA !== roleIndexB) return roleIndexA - roleIndexB;
+      return a.employeeName.localeCompare(b.employeeName);
+    });
+  };
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -844,7 +855,8 @@ const PlanningView: React.FC = () => {
               </div>
               <div className="divide-y">
                 {Object.entries(groupedRows).map(([role, untypedRows]) => {
-                  const rows = untypedRows as PlanningRow[];
+                  // Trie dynamiquement les employés du groupe selon l’ordre des rôles et le nom
+                  const rows = getSortedRows(untypedRows as PlanningRow[]);
                   return (
                     <div key={role}>
                       <div className="bg-brand text-white px-4 py-3 text-lg font-bold text-center uppercase tracking-wide flex justify-center items-center sticky top-14 z-10 relative">
