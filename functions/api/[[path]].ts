@@ -130,9 +130,8 @@ export const onRequest: PagesFunction = async (context) => {
         }
       }
 
-      // discovery now internally filters BANNED_KEYS
-      const discovered = discoverRoleRawByKey(employees, templates, plannings);
-      const roles = mergeRoles(storedRoles, discovered);
+      // Ne jamais fusionner ni auto-découvrir les rôles pour l’ordre : on renvoie uniquement l’ordre stocké
+      const roles = storedRoles;
 
       const pref = await preferredRoleIdMap(db);
 
