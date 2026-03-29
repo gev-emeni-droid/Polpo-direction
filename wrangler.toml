@@ -1,13 +1,13 @@
-name = "planning-test"
+name = "polpo-direction"
 compatibility_date = "2024-06-20"
 pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "planning-test"
-database_id = "a3c32e6b-6500-49e2-b3e9-2bb586e9b868"
+database_name = "polpo-direction"
+database_id = "d66f3708-cf87-4505-b4c2-b0d028604d9e"
 
 [[d1_databases]]
 binding = "FACTURE_DB"
-database_name = "facture-test"
-database_id = "c4cb9753-9a2b-41a9-8eef-abb6d510bb39"
+database_name = "facture-db"
+database_id = "29423ee1-e523-46df-bd81-791b6195fcda"
