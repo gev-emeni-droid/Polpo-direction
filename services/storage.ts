@@ -13,7 +13,14 @@ export const getRoles = async () => {
   const blacklistSet = new Set(blacklist);
 
   // Source of truth: only roles configured in settings/API order.
-  return Array.isArray(roles) ? roles.filter(r => !blacklistSet.has(r.id)) : [];
+  const filtered = Array.isArray(roles) ? roles.filter(r => !blacklistSet.has(r.id)) : [];
+
+  // Business rule: ENCADREMENT must always exist in role management.
+  if (!filtered.some(r => r.id === 'ENCADREMENT')) {
+    filtered.unshift({ id: 'ENCADREMENT', label: 'ENCADREMENT' });
+  }
+
+  return filtered;
 };
 
 export const saveRoles = async (roles: { id: string, label: string }[]) => {
