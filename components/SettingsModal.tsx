@@ -713,7 +713,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onDataCh
 
           {/* --- TAB:ROLES --- */}
           {activeTab === 'roles' && (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="max-w-5xl mx-auto space-y-6">
               {/* List Roles */}
               <div className="bg-white rounded-lg shadow-sm border border-slate-200">
                 <table className="w-full text-sm">
